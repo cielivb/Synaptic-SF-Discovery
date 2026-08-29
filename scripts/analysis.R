@@ -2,19 +2,18 @@
 # Author: Ciel Baumann
 # Last updated: NA
 
-source("setup.R")
-
+source("scripts/setup.R")
+source("scripts/geometry.R")
 log_info("CONGRATS! YOU GOT THIS FAR!")
 
+CLUSTER <- makeCluster(detectCores())
 
-# ## Build Geometry Descriptor Table
-# Useful basic metrics include:
-#   - Length, Width, Height : derived from PCA projections
-# - Radius of Gyration (Rg) : compactness / RMS distance from centroid
-# - Eccentricity : elongation
-# - Sphericity
-# - Coefficient of Variation : spread
-# - Kurtosis : tailedness
+csv_files <- list.files("data_csv", pattern = "\\.csv$", full.names = TRUE)
+geoms <- parLapplyLB(CLUSTER, csv_files, build_geom_tibble)
+
+stopCluster(CLUSTER)
+
+
 # 
 # ## Categorise Proteins by GO Annotations
 # Add Inhibitory Synapse Receptor and Excitatory Synapse Receptor column to

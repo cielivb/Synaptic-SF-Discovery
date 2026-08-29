@@ -2,13 +2,18 @@
 
 # Install renv if not already installed
 if (!requireNamespace("renv", quietly = TRUE)) {
-  install.packages("renv")
+  print("Installing renv ...")
+  install.packages("renv", verbose = FALSE)
+  print("Installed renv")
 }
 
 # Restore R environment from lockfile and printing dependency versions
-renv::restore(lockfile = "../renv.lock")
+print("Restoring R environment from lockfile ...")
+renv::restore(lockfile = "renv.lock", verbose = FALSE)
+print("Restored R environment from lockfile")
 
 # Load packages
+print("Loading libraries ...")
 library(logger)
 library(dplyr)
 library(ggplot2)
@@ -16,14 +21,18 @@ library(readr)
 library(stringr)
 library(gridExtra)
 library(glue)
+library(parallel)
+print("Libraries loaded")
 
 # Initialise logger
+print("Initialising logger ...")
 logfile <- "results/analysis.log"
 if (file.exists(logfile)) {
   file.remove(logfile)
 }
 log_appender(appender_console)
 log_appender(appender_file(logfile), index = 2)
+print("Logger initialised")
 
 # Log R version
 log_info(glue("Using R version {getRversion()}"))
