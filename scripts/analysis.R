@@ -4,6 +4,7 @@
 
 source("setup.R")
 
+log_info("CONGRATS! YOU GOT THIS FAR!")
 
 
 # ## Build Geometry Descriptor Table
