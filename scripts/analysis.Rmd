@@ -11,17 +11,17 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Set Up Environment
 
-The Conda environment must be activated by executing BUILD_ENV.sh before 
+The Conda environment must be activated by executing BUILD_ENV.sh before
 proceeding.
 
-```{r}
+```{r, include=FALSE}
 # Install renv if not already installed
 if (!requireNamespace("renv", quietly = TRUE)) {
   install.packages("renv")
 }
 ```
 
-```{r}
+```{r, include=FALSE}
 # Initial renv set up - do not execute if lockfile exists
 renv::init()
 install.packages("tidyverse")
@@ -29,8 +29,9 @@ renv::snapshot()
 ```
 
 ```{r}
-# Restore R environment from lockfile
-renv::restore()
+# Restore R environment from lockfile and printing dependency versions
+renv::restore(lockfile = "../renv.lock")
+packageVersion("tidyverse")
 ```
 
 

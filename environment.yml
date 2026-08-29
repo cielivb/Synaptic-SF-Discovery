@@ -1,7 +1,7 @@
 name: Human-NT-Receptor-Geometry-by-Synapse-Type-Env
 channels:
   - conda-forge
+  - bioconda
 dependencies:
-  - r-base=4.4.1
-  - jq # JSON parsing in downloader
-  - curl # For downloading data
+  - r-base=4.6.1
+  - proteomes2structs=0.3.0a1
