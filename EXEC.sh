@@ -8,14 +8,16 @@ mkdir -p data_pdb data_csv results
 
 # Download .pdb files for Homo Sapiens proteins
 if [ -z "$(ls -A data_pdb)" ]; then
-    proteomes2structs --pdb UP000005640 data_pdb
+    echo "Notice : proteomes2structs status update interval does not apply to fasta download."
+    echo "Expect fasta download to take some time."
+    proteomes2structs --pdb --sui 5 --threads 12 UP000005640 data_pdb
 else
     echo ".pdb data already downloaded - skipping download"
 fi
 
 # Extract coordinates from each .pdb file
 if [ -z "$(ls -A data_csv)" ]; then
-    ./scripts/extract_coordinates.sh data_pdb data_csv
+    ./scripts/extract_coordinates.sh data_pdb/UP000005640/structures/ data_csv
 else
     echo ".csv data already exists - skipping coordinate extraction"
 fi

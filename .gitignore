@@ -1,3 +1,7 @@
+# Data directories
+data_csv/
+data_pdb/
+
 # History files
 .Rhistory
 .Rapp.history
