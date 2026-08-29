@@ -8,28 +8,35 @@ if (!requireNamespace("renv", quietly = TRUE)) {
 # Restore R environment from lockfile and printing dependency versions
 renv::restore(lockfile = "../renv.lock")
 
-# Reset logfile
+# Load packages
+library(logger)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(stringr)
+library(gridExtra)
+library(glue)
+
+# Initialise logger
 logfile <- "results/analysis.log"
 if (file.exists(logfile)) {
   file.remove(logfile)
 }
-
-# Initialise logger
-library(logger)
 log_appender(appender_console)
 log_appender(appender_file(logfile), index = 2)
 
 # Log R version
-log_info(sprintf("Using R version %s", getRversion()))
+log_info(glue("Using R version {getRversion()}"))
 
 # Log general metadata
-log_info(sprintf("Running on platform: %s", R.version$platform))
-log_info(sprintf("Locale info: %s", Sys.getlocale()))
-log_info(sprintf("Kernel release: %s", Sys.info()["release"]))
-log_info(sprintf("Kernel version: %s", Sys.info()["version"]))
+log_info(glue("Running on platform: {R.version$platform}"))
+log_info(glue("Locale info: {Sys.getlocale()}"))
+log_info(glue("Kernel release: {Sys.info()['release']}"))
+log_info(glue("Kernel version: {Sys.info()['version']}"))
 
 # Log environment package metadata
+pkgs <- c("logger", "dplyr", "ggplot2", "readr", "stringr", "gridExtra", "glue")
 log_info("Environment packages:")
-for (pkg in c("tidyverse", "logger", "kableExtra")) {
-  log_info(sprintf("%s: %s", pkg, as.character(packageVersion(pkg))))
+for (pkg in pkgs) {
+  log_info(glue("{pkg}: {as.character(packageVersion(pkg))}"))
 }
