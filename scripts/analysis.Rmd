@@ -23,9 +23,9 @@ if (!requireNamespace("renv", quietly = TRUE)) {
 
 ```{r}
 # Initial renv set up - do not execute if lockfile exists
-#renv::init()
-#install.packages("tidyverse")
-#renv::snapshot()
+renv::init()
+install.packages("tidyverse")
+renv::snapshot()
 ```
 
 ```{r}
