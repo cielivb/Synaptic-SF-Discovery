@@ -1,4 +1,4 @@
-# Restore packages from lockfile
+# Restore packages from lockfile and log execution metadata
 
 # Install renv if not already installed
 if (!requireNamespace("renv", quietly = TRUE)) {
@@ -7,20 +7,20 @@ if (!requireNamespace("renv", quietly = TRUE)) {
   print("Installed renv")
 }
 
-# Restore R environment from lockfile and printing dependency versions
+# Restore R environment from lockfile
 print("Restoring R environment from lockfile ...")
 renv::restore(lockfile = "renv.lock", verbose = FALSE)
 print("Restored R environment from lockfile")
 
 # Load packages
 print("Loading libraries ...")
-library(logger)
 library(dplyr)
 library(ggplot2)
-library(readr)
-library(stringr)
-library(gridExtra)
 library(glue)
+library(gridExtra)
+library(httr2)
+library(jsonlite)
+library(logger)
 library(parallel)
 print("Libraries loaded")
 
@@ -44,7 +44,7 @@ log_info(glue("Kernel release: {Sys.info()['release']}"))
 log_info(glue("Kernel version: {Sys.info()['version']}"))
 
 # Log environment package metadata
-pkgs <- c("logger", "dplyr", "ggplot2", "readr", "stringr", "gridExtra", "glue")
+pkgs <- c("dplyr", "ggplot2", "glue", "gridExtra", "httr2", "jsonlite", "logger")
 log_info("Environment packages:")
 for (pkg in pkgs) {
   log_info(glue("{pkg}: {as.character(packageVersion(pkg))}"))
