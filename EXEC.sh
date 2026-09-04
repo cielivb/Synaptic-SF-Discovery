@@ -22,6 +22,12 @@ else
     echo ".csv data already exists - skipping coordinate extraction"
 fi
 
+
+# Extract AF confidence scores for each protein
+
+
+# Extract 
+
 # Execute R analysis
 Rscript scripts/analysis.R
 

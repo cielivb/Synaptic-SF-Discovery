@@ -10,6 +10,7 @@ CLUSTER <- makeCluster(detectCores())
 
 csv_files <- list.files("data_csv", pattern = "\\.csv$", full.names = TRUE)
 geoms <- parLapplyLB(CLUSTER, csv_files, build_geom_tibble)
+combined <- dplyr::bind_rows(geoms)
 
 stopCluster(CLUSTER)
 
