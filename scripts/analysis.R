@@ -12,12 +12,9 @@
 # and confidence-aware analysis.
 
 source("scripts/setup.R")
-source("scripts/fetch.R")
+source("scripts/fetch_go_metadata.R")
+source("scripts/fetch_structure_data.R")
 
-# Fetch, filter, and clean data
-get_protein_accessions()
-filter_by_go_metadata()
-download_pdb_files()
-extract_structure_data()
+
 
 # 

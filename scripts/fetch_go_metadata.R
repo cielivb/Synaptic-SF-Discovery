@@ -1,8 +1,5 @@
 
 
-##### 1. FILTER ACCESSIONS BY GO METADATA ======================================
-
-
 # Download GO JSON metadata files for each protein accession
 
 download_go_metadata <- function() {
@@ -48,7 +45,7 @@ merge_go_metadata <- function() {
 
 # Manipulate merged GO JSON into a GO metadata table
 
-wrangle_go_metadata <- function() {
+clean_go_metadata <- function() {
   
   logger_info("Wrangling GO metadata ...")
 
@@ -67,23 +64,27 @@ wrangle_go_metadata <- function() {
   # Remove proteins that are not associated with excitatory nor inhibitory
   # synapses. It is permissible for a given protein to be associated with both.
   
+  write.csv(df, "results/cleaned_go_metadata.csv")
 }
 
 
-# 1. Shortlist proteins
+
+
+# 1.
 # Build a base metadata table containing protein accession (str), excit_syn 
 # (bool), and inhib_syn (bool) columns. Each entry/row has post-synaptic neuro-
 # transmitter receptor activity (GO:0098960), and is associated with either an
 # excitatory synapse (GO:0060076) or an inhibitory synapse (GO:0060077).
 # Requires the QuickGO API.
 
-filter_by_go_metadata() <- function() {
-  
+fetch_go_metadata() <- function() {
   download_go_metadata()
   merge_go_metadata()
-  wrangle_go_metadata()
-  
+  clean_go_metadata()
 }
+
+
+fetch_go_metadata()
 
 
 
