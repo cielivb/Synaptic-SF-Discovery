@@ -1,6 +1,6 @@
 # Data directories
-data_csv/
-data_pdb/
+data/
+results/
 
 # History files
 .Rhistory
