@@ -8,12 +8,9 @@ if (!requireNamespace("renv", quietly = TRUE)) {
 }
 
 # Restore R environment from lockfile
-print("Restoring R environment from lockfile ...")
-renv::restore(lockfile = "renv.lock", verbose = FALSE)
-print("Restored R environment from lockfile")
+renv::restore(lockfile = "renv.lock", clean = TRUE, prompt = FALSE)
 
 # Load packages
-print("Loading libraries ...")
 library(dplyr)
 library(ggplot2)
 library(glue)
@@ -22,17 +19,15 @@ library(httr2)
 library(jsonlite)
 library(logger)
 library(parallel)
-print("Libraries loaded")
+library(readr)
 
 # Initialise logger
-print("Initialising logger ...")
 logfile <- "results/analysis.log"
 if (file.exists(logfile)) {
   file.remove(logfile)
 }
 log_appender(appender_console)
 log_appender(appender_file(logfile), index = 2)
-print("Logger initialised")
 
 # Log R version
 log_info(glue("Using R version {getRversion()}"))
