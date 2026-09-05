@@ -12,25 +12,12 @@
 # and confidence-aware analysis.
 
 source("scripts/setup.R")
+source("scripts/fetch.R")
 
-# 0. Download .tsv of all protein accessions in the human proteome.
-proteome <- "UP000005640"
-log_info(glue("Checking proteome accession {proteome} is Homo sapiens ..."))
-req <- request("https://rest.uniprot.org/proteomes/UP000005640") |>
-  req_url_query(fields = "organism_name")
-species <- resp_body_json(req_perform(req))$organism$scientificName
-if (species != "Homo sapiens") {
-  log_failure(glue("Expected Homo sapiens, got {species}"))
-}
+# Fetch, filter, and clean data
+get_protein_accessions()
+filter_by_go_metadata()
+download_pdb_files()
+extract_structure_data()
 
-log_info("Downloading protein accessions (may take a few minutes) ...")
-req <- request("https://rest.uniprot.org/uniprotkb/stream") |>
-  req_url_query(
-    query  = "proteome:UP000005640",
-    fields = "accession",
-    format = "tsv"
-  )
-res <- req_perform(req, path="data/accessions.tsv")
-if (res$status != 200) {
-  log_failure(glue("Failed to download protein accessions ({res$status})"))
-}
+# 
