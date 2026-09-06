@@ -1,4 +1,4 @@
-# Map synaptic proteins to their GO terms across organism
+# Map synaptic proteins to their GO terms across organisms
 
 
 # Download and clean GO slim synapse data
@@ -20,8 +20,8 @@ fetch_go_slim_synapse_data <- function() {
 
 # Download GO IDs for each protein in organism
 download_go_metadata <- function(organism) {
-  goa_request <- SPECIES$goa_request[match(organism, SPECIES$organism)]
-  goa_path <- SPEICES$goa_path[match(organism, SPECIES$organism)]
+  goa_request <- SPECIES$goa_request[match(organism, SPECIES$common_name)]
+  goa_path    <- SPECIES$goa_path[match(organism, SPECIES$common_name)]
   req_perform(goa_request, goa_path)
 }
 
@@ -67,6 +67,7 @@ fetch_organism_go_metadata <- function(organism) {
   
   # Download and read in unfiltered GO annotations
   download_go_metadata(organism)
+  goa_path <- SPECIES$goa_path[match(organism, SPECIES$common_name)]
   raw_df <- read_go_metadata(goa_path)
   
   # Export number of proteins and total number of GO annotations
@@ -81,16 +82,40 @@ fetch_organism_go_metadata <- function(organism) {
   write_csv(filtered_counts, glue("results/goa_cleaning/{organism}_1_filtered_counts.csv"))
   
   # Export filtered dataframe
-  write_csv(filtered_df, glue("resuts/goa_clean/{organism}.csv"))
+  write_csv(filtered_df, glue("results/goa_clean/{organism}.csv"))
   
 }
 
 
+
+
 # Create CSV per organism mapping synaptic proteins to their GO terms
+
 system("mkdir -p data/goa results/goa_cleaning results/goa_clean")
 log_info("Fetching GO Slim synapse data ...")
 fetch_go_slim_synapse_data()
-SYNAPSE_GO_IDS <- read_csv("results/goa_cleaning/goslim_synapse_clean.csv")
+SYNAPSE_GO_IDS <- read_csv(
+  "results/goa_cleaning/goslim_synapse_clean.csv", 
+  show_col_types = FALSE
+)
+
+clusterEvalQ(CLUSTER, {
+  library(httr2)
+  library(readr)
+  library(dplyr)
+  library(glue)
+})
+
+clusterExport(CLUSTER, c(
+  "SPECIES",
+  "SYNAPSE_GO_IDS",
+  "download_go_metadata",
+  "fetch_organism_go_metadata",
+  "read_go_metadata",
+  "get_protein_and_go_counts",
+  "keep_synaptic_proteins"
+))
+
 log_info("Fetching GO metadata (this may take a while) ...")
 parLapplyLB(CLUSTER, as.vector(SPECIES$common_name), fetch_organism_go_metadata)
 remove(SYNAPSE_GO_IDS)
