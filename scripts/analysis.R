@@ -27,7 +27,7 @@ SPECIES <- tibble(
 SPECIES <- SPECIES |>
   mutate(
     goa_path = file.path("data/goa", basename(goa_endpoint)),
-    goa_request = request(goa_endpoint)
+    goa_request = lapply(goa_endpoint, function(e) request(e))
   )
 
 
