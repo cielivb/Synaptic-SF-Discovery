@@ -32,7 +32,11 @@ SPECIES <- SPECIES |>
 
 
 source("scripts/1_fetch_synaptic_protein_go_data.R")
-source("scripts/2_fetch_structure_data.R")
-source("scripts/3_cluster_by_geometry.R")
-source("scripts/4_get_go_by_cluster.R")
-source("scripts/5_visualise_go_by_cluster")
+
+stopCluster(CLUSTER)
+log_info("End!")
+
+#source("scripts/2_fetch_structure_data.R")
+#source("scripts/3_cluster_by_geometry.R")
+#source("scripts/4_get_go_by_cluster.R")
+#source("scripts/5_visualise_go_by_cluster")

@@ -1,4 +1,4 @@
-# Map synaptic proteins to their GO terms across species
+# Map synaptic proteins to their GO terms across organism
 
 
 # Download and clean GO slim synapse data
@@ -6,15 +6,19 @@ fetch_go_slim_synapse_data <- function() {
   goslim_path <- "data/goslim_synapse.tsv"
   endpoint <- "http://release.geneontology.org/2026-08-05/ontology/subsets/goslim_synapse.tsv"
   request(endpoint) |> req_perform(goslim_path)
+  
   raw_slim <- read_tsv(goslim_path, col_names = TRUE)
+  
   clean_slim <- raw_slim |>
+    select(go_id = `?x`) |>
     mutate(
-      go_id = ?x |> 
+      go_id = go_id |> 
         str_remove_all("[<>]") |>
         basename() |>
         str_replace("_", ":")
     ) |>
-    select(c(go_id = "?x"))
+    arrange(go_id)
+  
   write_csv(clean_slim, "results/goa_cleaning/goslim_synapse_clean.csv")
 }
 
@@ -45,14 +49,19 @@ read_go_metadata <- function(goa_path) {
 
 # Keep entries only where the protein has at least one synapse-associated GO ID
 keep_synaptic_proteins <- function(df) {
-  
+  synapse_go_ids <- read_csv("results/goa_cleaning/goslim_synapse_clean.csv")
+  df_filtered <- df |>
+    group_by(uniprot) |>
+    filter(any(!is.na(match(go_id, synapse_go_ids$go_id)))) |>
+    ungroup()
+  return(df_filtered)
 }
 
 
 # Export csv of synaptic proteins and associated GO IDs
 clean_go_metadata <- function(goa_path) {
   raw_df <- read_go_metadata(goa_path)
-  species <- SPECIES$common_name[match(goa_path, SPECIES$goa_path)]
+  organism <- SPECIES$common_name[match(goa_path, SPECIES$goa_path)]
   
   # Export number of proteins and total number of GO annotations
   init_counts <- raw_df |>
@@ -60,7 +69,7 @@ clean_go_metadata <- function(goa_path) {
       total_proteins = n_distinct(uniprot),
       total_annotations = n()
     )
-  write_csv(init_counts, glue("results/goa_cleaning/{species}_0_init_counts.csv"))
+  write_csv(init_counts, glue("results/goa_cleaning/{organism}_0_init_counts.csv"))
 
   # Filter to keep only synaptic proteins
   filtered_df <- keep_synaptic_proteins(raw_df)
@@ -71,14 +80,14 @@ clean_go_metadata <- function(goa_path) {
       total_proteins = n_distinct(uniprot),
       total_annotations = n()
     )
-  write_csv(init_counts, glue("results/goa_cleaning/{species}_1_filtered_counts.csv"))
+  write_csv(init_counts, glue("results/goa_cleaning/{organism}_1_filtered_counts.csv"))
   
   # Export filtered dataframe
-  write_csv(filtered_df, glue("resuts/goa_clean/{species}.csv"))
+  write_csv(filtered_df, glue("resuts/goa_clean/{organism}.csv"))
 }
 
 
-# Create CSV per species mapping synaptic proteins to their GO terms
+# Create CSV per organism mapping synaptic proteins to their GO terms
 fetch_synaptic_protein_go_data <- {
   system("mkdir -p data/goa results/goa_cleaning results/goa_clean")
   fetch_go_slim_synapse_data()
