@@ -20,6 +20,12 @@ fetch_go_slim_synapse_data()
 log_info("Fetching GO metadata ...")
 done <- parLapplyLB(CLUSTER, SPECIES$common_name, fetch_organism_go_metadata)
 
+# Download synaptic protein structure files and generate geometric descriptors,
+# creating a CSV per organism where each row represents the geometric properties
+# of a protein in that organism's proteome
+log_info("Fetching AFDB predicted structure data ...")
+done <- parLapplyLB(CLUSTER, SPECIES$common_name, fetch_organism_structure_data)
+
 
 # Analysis complete!
 stopCluster(CLUSTER)

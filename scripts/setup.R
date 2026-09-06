@@ -60,10 +60,30 @@ for (pkg in pkgs) {
 ### CREATE GLOBAL SPECIES TABLE ------------------------------------------------
 
 SPECIES <- tibble(
-  common_name = c("Human", "Chicken"),
+  common_name = c("human", "fruit fly", "mouse", "rat", "worm", "zebrafish"),
+  species = c(
+    "Homo sapiens", 
+    "Drosophila melanogaster", 
+    "Mus musculus", 
+    "Rattus norvegicus",
+    "Caenorhabditis elegans",
+    "Danio rerio"
+  ),
   goa_endpoint = c(
     "https://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz",
-    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/CHICKEN/goa_chicken.gaf.gz"
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/FLY/goa_fly.gaf.gz",
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/MOUSE/goa_mouse.gaf.gz",
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/RAT/goa_rat.gaf.gz",
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/WORM/goa_worm.gaf.gz",
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/ZEBRAFISH/goa_zebrafish.gaf.gz"
+  ),
+  afdb_endpoint = c(
+    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000005640_9606_HUMAN_v6.tar",
+    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000000803_7227_DROME_v6.tar",
+    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000000589_10090_MOUSE_v6.tar",
+    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000002494_10116_RAT_v6.tar",
+    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000001940_6239_CAEEL_v6.tar",
+    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000000437_7955_DANRE_v6.tar"
   )
 )
 
