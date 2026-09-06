@@ -20,9 +20,9 @@ fetch_go_slim_synapse_data <- function() {
 
 # Download GO IDs for each protein in organism
 download_go_metadata <- function(organism) {
-  goa_request <- SPECIES$goa_request[match(organism, SPECIES$common_name)]
-  goa_path    <- SPECIES$goa_path[match(organism, SPECIES$common_name)]
-  req_perform(goa_request, goa_path)
+  endpoint <- SPECIES$goa_endpoint[match(organism, SPECIES$common_name)]
+  goa_path <- SPECIES$goa_path[match(organism, SPECIES$common_name)]
+  req_perform(request(endpoint), goa_path)
 }
 
 
@@ -54,9 +54,13 @@ read_go_metadata <- function(goa_path) {
 
 # Keep entries only where the protein has at least one synapse-associated GO ID
 keep_synaptic_proteins <- function(df) {
+  synapse_go_ids <- read_csv(
+    "results/goa_cleaning/goslim_synapse_clean.csv", 
+    show_col_types = FALSE
+  )
   df_filtered <- df |>
     group_by(uniprot) |>
-    filter(any(!is.na(match(go_id, SYNAPSE_GO_IDS$go_id)))) |>
+    filter(any(!is.na(match(go_id, synpase_go_ids$go_id)))) |>
     ungroup()
   return(df_filtered)
 }
@@ -87,35 +91,3 @@ fetch_organism_go_metadata <- function(organism) {
 }
 
 
-
-
-# Create CSV per organism mapping synaptic proteins to their GO terms
-
-system("mkdir -p data/goa results/goa_cleaning results/goa_clean")
-log_info("Fetching GO Slim synapse data ...")
-fetch_go_slim_synapse_data()
-SYNAPSE_GO_IDS <- read_csv(
-  "results/goa_cleaning/goslim_synapse_clean.csv", 
-  show_col_types = FALSE
-)
-
-clusterEvalQ(CLUSTER, {
-  library(httr2)
-  library(readr)
-  library(dplyr)
-  library(glue)
-})
-
-clusterExport(CLUSTER, c(
-  "SPECIES",
-  "SYNAPSE_GO_IDS",
-  "download_go_metadata",
-  "fetch_organism_go_metadata",
-  "read_go_metadata",
-  "get_protein_and_go_counts",
-  "keep_synaptic_proteins"
-))
-
-log_info("Fetching GO metadata (this may take a while) ...")
-parLapplyLB(CLUSTER, as.vector(SPECIES$common_name), fetch_organism_go_metadata)
-remove(SYNAPSE_GO_IDS)

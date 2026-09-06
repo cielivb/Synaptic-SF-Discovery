@@ -1,4 +1,8 @@
-# Restore packages from lockfile and log execution metadata
+# Restore packages from lockfile, log execution metadata, create species table, 
+# and set up cluster
+
+
+### RESTORE PACKAGES FROM LOCKFILE ---------------------------------------------
 
 # Install renv if not already installed
 if (!requireNamespace("renv", quietly = TRUE)) {
@@ -20,6 +24,9 @@ library(jsonlite)
 library(logger)
 library(parallel)
 library(readr)
+
+
+### SET UP LOGGER AND LOG EXECUTION METADATA -----------------------------------
 
 # Initialise logger
 logfile <- "results/analysis.log"
@@ -44,3 +51,54 @@ log_info("Environment packages:")
 for (pkg in pkgs) {
   log_info(glue("{pkg}: {as.character(packageVersion(pkg))}"))
 }
+
+
+### CREATE GLOBAL SPECIES TABLE ------------------------------------------------
+
+SPECIES <- tibble(
+  common_name = c("Human", "Chicken"),
+  goa_endpoint = c(
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz",
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/CHICKEN/goa_chicken.gaf.gz"
+  )
+)
+
+SPECIES <- SPECIES |>
+  mutate(
+    goa_path = file.path("data/goa", basename(goa_endpoint)),
+  )
+
+
+### SET UP AND START CLUSTER ---------------------------------------------------
+
+CLUSTER <- makeCluster(detectCores())
+
+clusterEvalQ(CLUSTER, {
+  library(dplyr)
+  library(ggplot2)
+  library(glue)
+  library(gridExtra)
+  library(httr2)
+  library(jsonlite)
+  library(logger)
+  library(parallel)
+  library(readr)
+})
+
+source("scripts/1_fetch_synaptic_protein_go_data.R")
+
+clusterExport(CLUSTER, c(
+  
+  # 1_fetch_synaptic_protein_go_data.R functions
+  "download_go_metadata",
+  "fetch_organism_go_metadata",
+  "read_go_metadata",
+  "get_protein_and_go_counts",
+  "keep_synaptic_proteins"
+  
+))
+
+
+### MAKE DIRECTORIES -----------------------------------------------------------
+
+system("mkdir -p data/goa results/goa_cleaning results/goa_clean")

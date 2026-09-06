@@ -11,32 +11,16 @@
 # of this risk through strict GO-annotation filtering, outlier stripping, 
 # and confidence-aware analysis.
 
-source("scripts/0_setup.R")
-CLUSTER <- makeCluster(detectCores())
+source("scripts/setup.R")
+
+# Fetch and clean synaptic protein GO data, creating one CSV per organism 
+# mapping synaptic proteins to their GO terms
+log_info("Fetching GO Slim synapse data ...")
+fetch_go_slim_synapse_data()
+log_info("Fetching GO metadata (this may take a while) ...")
+parLapplyLB(CLUSTER, SPECIES$common_name, fetch_organism_go_metadata)
 
 
-# Enter species of interest here
-SPECIES <- tibble(
-  common_name = c("Human", "Chicken"),
-  goa_endpoint = c(
-    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz",
-    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/CHICKEN/goa_chicken.gaf.gz"
-  )
-)
-
-SPECIES <- SPECIES |>
-  mutate(
-    goa_path = file.path("data/goa", basename(goa_endpoint)),
-    goa_request = lapply(goa_endpoint, function(e) request(e))
-  )
-
-
-source("scripts/1_fetch_synaptic_protein_go_data.R")
-
+# Analysis complete!
 stopCluster(CLUSTER)
 log_info("End!")
-
-#source("scripts/2_fetch_structure_data.R")
-#source("scripts/3_cluster_by_geometry.R")
-#source("scripts/4_get_go_by_cluster.R")
-#source("scripts/5_visualise_go_by_cluster")

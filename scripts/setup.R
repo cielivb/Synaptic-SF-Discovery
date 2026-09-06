@@ -1,0 +1,105 @@
+# Restore packages from lockfile, log execution metadata, create species table, 
+# and set up cluster
+
+
+### RESTORE PACKAGES FROM LOCKFILE ---------------------------------------------
+
+# Install renv if not already installed
+if (!requireNamespace("renv", quietly = TRUE)) {
+  print("Installing renv ...")
+  install.packages("renv", verbose = FALSE)
+  print("Installed renv")
+}
+
+# Restore R environment from lockfile
+renv::restore(lockfile = "renv.lock", clean = TRUE, prompt = FALSE)
+
+# Load packages
+library(dplyr)
+library(ggplot2)
+library(glue)
+library(gridExtra)
+library(httr2)
+library(jsonlite)
+library(logger)
+library(parallel)
+library(readr)
+
+
+### SET UP LOGGER AND LOG EXECUTION METADATA -----------------------------------
+
+# Initialise logger
+logfile <- "results/analysis.log"
+if (file.exists(logfile)) {
+  file.remove(logfile)
+}
+log_appender(appender_console)
+log_appender(appender_file(logfile), index = 2)
+
+# Log R version
+log_info(glue("Using R version {getRversion()}"))
+
+# Log general metadata
+log_info(glue("Running on platform: {R.version$platform}"))
+log_info(glue("Locale info: {Sys.getlocale()}"))
+log_info(glue("Kernel release: {Sys.info()['release']}"))
+log_info(glue("Kernel version: {Sys.info()['version']}"))
+
+# Log environment package metadata
+pkgs <- c("dplyr", "ggplot2", "glue", "gridExtra", "httr2", "jsonlite", "logger")
+log_info("Environment packages:")
+for (pkg in pkgs) {
+  log_info(glue("{pkg}: {as.character(packageVersion(pkg))}"))
+}
+
+
+### CREATE GLOBAL SPECIES TABLE ------------------------------------------------
+
+SPECIES <- tibble(
+  common_name = c("Human", "Chicken"),
+  goa_endpoint = c(
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz",
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/CHICKEN/goa_chicken.gaf.gz"
+  )
+)
+
+SPECIES <- SPECIES |>
+  mutate(
+    goa_path = file.path("data/goa", basename(goa_endpoint)),
+    goa_request = lapply(goa_endpoint, function(e) request(e))
+  )
+
+
+### SET UP AND START CLUSTER ---------------------------------------------------
+
+CLUSTER <- makeCluster(detectCores())
+
+clusterEvalQ(CLUSTER, {
+  library(dplyr)
+  library(ggplot2)
+  library(glue)
+  library(gridExtra)
+  library(httr2)
+  library(jsonlite)
+  library(logger)
+  library(parallel)
+  library(readr)
+})
+
+source("scripts/1_fetch_synaptic_protein_go_data.R")
+
+clusterExport(CLUSTER, c(
+  
+  # 1_fetch_synaptic_protein_go_data.R functions
+  "download_go_metadata",
+  "fetch_organism_go_metadata",
+  "read_go_metadata",
+  "get_protein_and_go_counts",
+  "keep_synaptic_proteins"
+  
+))
+
+
+### MAKE DIRECTORIES -----------------------------------------------------------
+
+system("mkdir -p data/goa results/goa_cleaning results/goa_clean")
