@@ -11,10 +11,28 @@
 # of this risk through strict GO-annotation filtering, outlier stripping, 
 # and confidence-aware analysis.
 
-source("scripts/setup.R")
-source("scripts/fetch_go_metadata.R")
-source("scripts/fetch_structure_data.R")
+source("scripts/0_setup.R")
+CLUSTER <- makeCluster(detectCores())
 
 
+# Enter species of interest here
+SPECIES <- tibble(
+  common_name = c("Human", "Chicken"),
+  goa_endpoint = c(
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz",
+    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/CHICKEN/goa_chicken.gaf.gz"
+  )
+)
 
-# 
+SPECIES <- SPECIES |>
+  mutate(
+    goa_path = file.path("data/goa", basename(goa_endpoint)),
+    goa_request = request(goa_endpoint)
+  )
+
+
+source("scripts/1_fetch_synaptic_protein_go_data.R")
+source("scripts/2_fetch_structure_data.R")
+source("scripts/3_cluster_by_geometry.R")
+source("scripts/4_get_go_by_cluster.R")
+source("scripts/5_visualise_go_by_cluster")

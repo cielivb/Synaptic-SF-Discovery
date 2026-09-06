@@ -110,6 +110,7 @@ clean_go_metadata <- function(df) {
 # excitatory synapse (GO:0060076) or an inhibitory synapse (GO:0060077).
 
 fetch_go_metadata <- function() {
+  system("mkdir -p data results results/go_cleaning")
   #download_go_metadata()
   df <- read_go_metadata()
   clean_go_metadata(df)
