@@ -89,6 +89,7 @@ clusterEvalQ(CLUSTER, {
 source("scripts/1_fetch_synaptic_protein_go_data.R")
 
 clusterExport(CLUSTER, c(
+  "SPECIES",
   
   # 1_fetch_synaptic_protein_go_data.R functions
   "download_go_metadata",

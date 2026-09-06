@@ -1,17 +1,15 @@
-INFO [2026-09-06 20:22:08] Using R version 4.6.1
-INFO [2026-09-06 20:22:08] Running on platform: x86_64-conda-linux-gnu
-INFO [2026-09-06 20:22:08] Locale info: LC_CTYPE=C.UTF-8;LC_NUMERIC=C;LC_TIME=C.UTF-8;LC_COLLATE=C.UTF-8;LC_MONETARY=C.UTF-8;LC_MESSAGES=C.UTF-8;LC_PAPER=C.UTF-8;LC_NAME=C;LC_ADDRESS=C;LC_TELEPHONE=C;LC_MEASUREMENT=C.UTF-8;LC_IDENTIFICATION=C
-INFO [2026-09-06 20:22:08] Kernel release: 6.18.33.2-microsoft-standard-WSL2
-INFO [2026-09-06 20:22:08] Kernel version: #1 SMP PREEMPT_DYNAMIC Thu Jun 18 21:54:43 UTC 2026
-INFO [2026-09-06 20:22:08] Environment packages:
-INFO [2026-09-06 20:22:08] dplyr: 1.2.1
-INFO [2026-09-06 20:22:08] ggplot2: 4.0.3
-INFO [2026-09-06 20:22:08] glue: 1.8.1
-INFO [2026-09-06 20:22:08] gridExtra: 2.3.1
-INFO [2026-09-06 20:22:08] httr2: 1.3.0
-INFO [2026-09-06 20:22:08] jsonlite: 2.0.0
-INFO [2026-09-06 20:22:09] logger: 0.4.3
-INFO [2026-09-06 20:22:10] requests are httr2_request
-INFO [2026-09-06 20:22:10] Fetching GO Slim synapse data ...
-INFO [2026-09-06 20:22:12] requests are httr2_request!
-INFO [2026-09-06 20:22:12] Fetching GO metadata (this may take a while) ...
+INFO [2026-09-07 10:36:02] Using R version 4.6.1
+INFO [2026-09-07 10:36:02] Running on platform: x86_64-conda-linux-gnu
+INFO [2026-09-07 10:36:02] Locale info: LC_CTYPE=C.UTF-8;LC_NUMERIC=C;LC_TIME=C.UTF-8;LC_COLLATE=C.UTF-8;LC_MONETARY=C.UTF-8;LC_MESSAGES=C.UTF-8;LC_PAPER=C.UTF-8;LC_NAME=C;LC_ADDRESS=C;LC_TELEPHONE=C;LC_MEASUREMENT=C.UTF-8;LC_IDENTIFICATION=C
+INFO [2026-09-07 10:36:02] Kernel release: 6.18.33.2-microsoft-standard-WSL2
+INFO [2026-09-07 10:36:02] Kernel version: #1 SMP PREEMPT_DYNAMIC Thu Jun 18 21:54:43 UTC 2026
+INFO [2026-09-07 10:36:02] Environment packages:
+INFO [2026-09-07 10:36:02] dplyr: 1.2.1
+INFO [2026-09-07 10:36:02] ggplot2: 4.0.3
+INFO [2026-09-07 10:36:02] glue: 1.8.1
+INFO [2026-09-07 10:36:02] gridExtra: 2.3.1
+INFO [2026-09-07 10:36:02] httr2: 1.3.0
+INFO [2026-09-07 10:36:02] jsonlite: 2.0.0
+INFO [2026-09-07 10:36:02] logger: 0.4.3
+INFO [2026-09-07 10:36:06] Fetching GO Slim synapse data ...
+INFO [2026-09-07 10:36:06] Fetching GO metadata (this may take a while) ...
