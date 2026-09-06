@@ -60,7 +60,7 @@ keep_synaptic_proteins <- function(df) {
   )
   df_filtered <- df |>
     group_by(uniprot) |>
-    filter(any(!is.na(match(go_id, synpase_go_ids$go_id)))) |>
+    filter(any(!is.na(match(go_id, synapse_go_ids$go_id)))) |>
     ungroup()
   return(df_filtered)
 }
@@ -87,7 +87,7 @@ fetch_organism_go_metadata <- function(organism) {
   
   # Export filtered dataframe
   write_csv(filtered_df, glue("results/goa_clean/{organism}.csv"))
-  
+  log_info(glue("Fetched {organism} go metadata"))
 }
 
 

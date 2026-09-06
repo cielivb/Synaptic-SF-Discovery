@@ -17,8 +17,8 @@ source("scripts/setup.R")
 # mapping synaptic proteins to their GO terms
 log_info("Fetching GO Slim synapse data ...")
 fetch_go_slim_synapse_data()
-log_info("Fetching GO metadata (this may take a while) ...")
-parLapplyLB(CLUSTER, SPECIES$common_name, fetch_organism_go_metadata)
+log_info("Fetching GO metadata ...")
+done <- parLapplyLB(CLUSTER, SPECIES$common_name, fetch_organism_go_metadata)
 
 
 # Analysis complete!

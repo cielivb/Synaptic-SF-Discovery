@@ -1,6 +1,10 @@
 # Restore packages from lockfile, log execution metadata, create species table, 
 # and set up cluster
 
+### MAKE DIRECTORIES -----------------------------------------------------------
+
+system("mkdir -p data/goa results/goa_cleaning results/goa_clean")
+
 
 ### RESTORE PACKAGES FROM LOCKFILE ---------------------------------------------
 
@@ -29,12 +33,12 @@ library(readr)
 ### SET UP LOGGER AND LOG EXECUTION METADATA -----------------------------------
 
 # Initialise logger
-logfile <- "results/analysis.log"
-if (file.exists(logfile)) {
-  file.remove(logfile)
+LOGFILE <- "results/analysis.log"
+if (file.exists(LOGFILE)) {
+  file.remove(LOGFILE)
 }
 log_appender(appender_console)
-log_appender(appender_file(logfile), index = 2)
+log_appender(appender_file(LOGFILE), index = 2)
 
 # Log R version
 log_info(glue("Using R version {getRversion()}"))
@@ -74,6 +78,7 @@ SPECIES <- SPECIES |>
 
 CLUSTER <- makeCluster(detectCores())
 
+clusterExport(CLUSTER, "LOGFILE")
 clusterEvalQ(CLUSTER, {
   library(dplyr)
   library(ggplot2)
@@ -84,6 +89,8 @@ clusterEvalQ(CLUSTER, {
   library(logger)
   library(parallel)
   library(readr)
+  log_appender(appender_console)
+  log_appender(appender_file(LOGFILE))
 })
 
 source("scripts/1_fetch_synaptic_protein_go_data.R")
@@ -100,7 +107,3 @@ clusterExport(CLUSTER, c(
   
 ))
 
-
-### MAKE DIRECTORIES -----------------------------------------------------------
-
-system("mkdir -p data/goa results/goa_cleaning results/goa_clean")
