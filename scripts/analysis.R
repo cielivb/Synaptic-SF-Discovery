@@ -1,15 +1,11 @@
-# Influence of Synapse Type on Receptor Protein Geometry in Homo Sapiens
+# Cross-Taxa Discovery of Synaptic Protein Structural Archetypes and Function
 # Author: Ciel Baumann
 # Last updated: NA
 
-# Both reviewed and unreviewed protein accessions are used to increase power.
-# Using reviewed proteins alone introduces human selection and experimental
-# accessibility biases, and greatly reduces statistical power. Combining both
-# reviewed and unreviewed proteins mitigates such biases and increases statist-
-# ical power, but at the risk of including fragments and lower-confidence and
-# not yet experimentally validated structures. Later steps reduce the severity
-# of this risk through strict GO-annotation filtering, outlier stripping, 
-# and confidence-aware analysis.
+# What structural archetypes exist among synaptic proteins, and what biological 
+# functions do they correspond to?
+
+
 
 source("scripts/setup.R")
 
@@ -24,8 +20,21 @@ done <- parLapplyLB(CLUSTER, SPECIES$common_name, fetch_organism_go_metadata)
 # creating a CSV per organism where each row represents the geometric properties
 # of a protein in that organism's proteome
 log_info("Fetching AFDB predicted structure data ...")
-done <- parLapplyLB(CLUSTER, SPECIES$common_name, fetch_organism_structure_data)
+done <- parLapplyLB(CLUSTER, SPECIES$common_name, download_organism_structure_data)
+done <- parLapplyLB(CLUSTER, SPECIES$common_name, compute_protein_geometries)
 
+# Cluster proteins by geometric properties within each organism
+
+# Discover geometrically similar clusters across species
+
+# TP: visualise geometrically similar clusters
+
+# Calculate functional enrichment for each cluster
+
+# Visualise functional enrichment for each cluster
+
+# TP: determine whether different clusters have statistically different 
+# functional enrichment
 
 # Analysis complete!
 stopCluster(CLUSTER)

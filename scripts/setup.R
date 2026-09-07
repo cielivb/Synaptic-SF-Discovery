@@ -60,7 +60,7 @@ for (pkg in pkgs) {
 ### CREATE GLOBAL SPECIES TABLE ------------------------------------------------
 
 SPECIES <- tibble(
-  common_name = c("human", "fruit fly", "mouse", "rat", "worm", "zebrafish"),
+  common_name = c("human", "fruit_fly", "mouse", "rat", "worm", "zebrafish"),
   species = c(
     "Homo sapiens", 
     "Drosophila melanogaster", 
@@ -90,7 +90,7 @@ SPECIES <- tibble(
 SPECIES <- SPECIES |>
   mutate(
     goa_path = file.path("data/goa", basename(goa_endpoint)),
-    goa_request = lapply(goa_endpoint, function(e) request(e))
+    afdb_path = file.path("data/afdb", basename(afdb_endpoint))
   )
 
 
