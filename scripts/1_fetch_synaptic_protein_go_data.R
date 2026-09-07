@@ -14,7 +14,7 @@ fetch_go_slim_synapse_data <- function() {
     mutate(go_id = sub("_", ":", basename(gsub("[<>]", "", go_id)))) |>
     arrange(go_id)
   
-  write_csv(clean_slim, "results/goa_cleaning/goslim_synapse_clean.csv")
+  write_csv(clean_slim, "data/goa/goslim_synapse_clean.csv")
 }
 
 
@@ -55,7 +55,7 @@ read_go_metadata <- function(goa_path) {
 # Keep entries only where the protein has at least one synapse-associated GO ID
 keep_synaptic_proteins <- function(df) {
   synapse_go_ids <- read_csv(
-    "results/goa_cleaning/goslim_synapse_clean.csv", 
+    "data/goa/goslim_synapse_clean.csv", 
     show_col_types = FALSE
   )
   df_filtered <- df |>
@@ -86,7 +86,7 @@ fetch_organism_go_metadata <- function(organism) {
   write_csv(filtered_counts, glue("results/goa_cleaning/{organism}_1_filtered_counts.csv"))
   
   # Export filtered dataframe
-  write_csv(filtered_df, glue("results/goa_clean/{organism}.csv"))
+  write_csv(filtered_df, glue("data/goa/{organism}_clean.csv"))
   log_info(glue("Fetched {organism} go metadata"))
 }
 

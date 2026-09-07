@@ -21,6 +21,9 @@ done <- parLapplyLB(CLUSTER, SPECIES$common_name, fetch_organism_go_metadata)
 # of a protein in that organism's proteome
 log_info("Fetching AFDB predicted structure data ...")
 done <- parLapplyLB(CLUSTER, SPECIES$common_name, download_organism_structure_data)
+log_info("Extracting atom site data ...")
+done <- parLapplyLB(CLUSTER, SPECIES$common_name, create_atom_site_csvs)
+log_info("Computing protein geometries ...")
 done <- parLapplyLB(CLUSTER, SPECIES$common_name, compute_protein_geometries)
 
 # Cluster proteins by geometric properties within each organism

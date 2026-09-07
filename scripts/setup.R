@@ -3,7 +3,7 @@
 
 ### MAKE DIRECTORIES -----------------------------------------------------------
 
-system("mkdir -p data/goa results/goa_cleaning results/goa_clean")
+system("mkdir -p data/goa results/goa_cleaning")
 
 
 ### RESTORE PACKAGES FROM LOCKFILE ---------------------------------------------
@@ -92,7 +92,7 @@ SPECIES <- SPECIES |>
     goa_path = file.path("data/goa", basename(goa_endpoint)),
     afdb_tar_path = file.path("data/afdb_tar", basename(afdb_endpoint)),
     atom_sites_dir = file.path("data/atom_sites", common_name),
-    residue_sites_dir = file.path("data/residue_sites", common_name)
+    geom_path = file.path("data/geometry", glue("{common_name}_geometry.csv"))
   )
 
 
