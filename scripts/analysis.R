@@ -13,8 +13,10 @@ source("scripts/setup.R")
 # mapping synaptic proteins to their GO terms
 log_info("Fetching GO Slim synapse data ...")
 fetch_go_slim_synapse_data()
-log_info("Fetching GO metadata ...")
-done <- lapply(SPECIES$common_name, fetch_organism_go_metadata)
+log_info("Downloading GO metadata ...")
+done <- lapply(SPECIES$common_name, download_go_metadata)
+log_info("Filtering GO metadata ...")
+done <- parLapplyLB(CLUSTER, SPECIES$common_name, filter_organism_go_metadata)
 
 # Download synaptic protein structure files and generate geometric descriptors,
 # creating a CSV per organism where each row represents the geometric properties

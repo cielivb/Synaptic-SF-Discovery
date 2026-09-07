@@ -4,6 +4,7 @@
 ### MAKE DIRECTORIES -----------------------------------------------------------
 
 system("mkdir -p data/goa results/goa_cleaning")
+system("mkdir -p data/afdb_tar data/atom_sites data/geometry")
 
 
 ### RESTORE PACKAGES FROM LOCKFILE ---------------------------------------------
@@ -122,11 +123,26 @@ clusterExport(CLUSTER, c(
   "SPECIES",
   
   # 1_fetch_synaptic_protein_go_data.R functions
-  "download_go_metadata",
-  "fetch_organism_go_metadata",
   "read_go_metadata",
   "get_protein_and_go_counts",
-  "keep_synaptic_proteins"
+  "keep_synaptic_proteins",
+  "filter_organism_go_metadata",
+  
+  # 2_fetch_geometric_data.R functions
+  "create_atom_site_csvs",
+  "get_synaptic_protein_structure_paths",
+  "load_residue_level_structure",
+  "weighted_pca",
+  "get_radial_distances",
+  "get_length_along_pc1",
+  "get_radius_of_gyration",
+  "get_eccentricity",
+  "get_coefficient_of_variation",
+  "get_kurtosis",
+  "get_low_pLDDT_fraction",
+  "get_high_pLDDT_fraction",
+  "compute_protein_geometries"
+  
   
 ))
 

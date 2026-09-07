@@ -23,6 +23,7 @@ download_go_metadata <- function(organism) {
   endpoint <- SPECIES$goa_endpoint[match(organism, SPECIES$common_name)]
   goa_path <- SPECIES$goa_path[match(organism, SPECIES$common_name)]
   req_perform(request(endpoint), goa_path)
+  log_info("Downloaded {organism} GO metadata")
 }
 
 
@@ -67,10 +68,9 @@ keep_synaptic_proteins <- function(df) {
 
 
 # Export csv of synaptic proteins and associated GO IDs
-fetch_organism_go_metadata <- function(organism) {
+filter_organism_go_metadata <- function(organism) {
   
-  # Download and read in unfiltered GO annotations
-  download_go_metadata(organism)
+  # Read in unfiltered GO annotations
   goa_path <- SPECIES$goa_path[match(organism, SPECIES$common_name)]
   raw_df <- read_go_metadata(goa_path)
   
@@ -87,7 +87,7 @@ fetch_organism_go_metadata <- function(organism) {
   
   # Export filtered dataframe
   write_csv(filtered_df, glue("data/goa/{organism}_clean.csv"))
-  log_info(glue("Fetched {organism} go metadata"))
+  log_info(glue("Filtered {organism} GO metadata"))
 }
 
 
