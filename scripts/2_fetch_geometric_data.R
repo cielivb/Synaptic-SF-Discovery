@@ -6,6 +6,7 @@ download_organism_structure_data <- function(organism) {
   endpoint <- SPECIES$afdb_endpoint[match(organism, SPECIES$common_name)]
   outpath <- SPECIES$afdb_tar_path[match(organism, SPECIES$common_name)]
   req_perform(request(endpoint), outpath)
+  log_info(glue("Downloaded {organism} AFDB structure data"))
 }
 
 
@@ -14,6 +15,7 @@ create_atom_site_csvs <- function(organism) {
   afdb_tar_path <- SPECIES$afdb_tar_path[match(organism, SPECIES$common_name)]
   atom_sites_dir <- SPECIES$atom_sites_dir[match(organism, SPECIES$common_name)]
   system(glue("scripts/extract_atom_sites.sh {afdb_tar_path} {atom_sites_dir}"))
+  log_info(glue("Created {organism} atom site csv files"))
 }
 
 
@@ -46,6 +48,33 @@ load_residue_level_structure <- function(path) {
 }
 
 
+# Get PC scores, eigenvectors, and eigenvalues, weighting by pLDDT
+weighted_pca <- function(residue_df) {
+  
+  # Extract coordinate matrix and weights
+  coords <- residue_df |> select(x, y, z)
+  weights <- residue_df$pLDDT
+  weights <- weights / sum(weights) # Normalise weights
+  
+  # Centre data using weighted mean mu
+  mu <- colSums(coords * weights)
+  coords_centered <- sweep(coords, 2, mu)
+  
+  # Compute weighted covariance matrix
+  cov_w <- t(coords_centered) %*% (coords_centered * weights)
+  
+  # Do an eigendecomposition
+  eig <- eigen(cov_w)
+  eig_vectors <- eig$vectors # 3x3, each col is a principal axis
+  eig_values  <- eig$values
+  
+  # Compute principal component scores
+  pc_scores <- as.matrix(coords_centered) %*% eig_vectors
+  
+  return(list(eig_vectors, eig_values, pc_scores))
+}
+
+
 # Create a CSV where each row represents a synaptic protein and contains data
 # about that protein's geometry and overall structure confidence
 compute_protein_geometries <- function(organism) {
@@ -53,12 +82,13 @@ compute_protein_geometries <- function(organism) {
   geom_file <- SPECIES$geom_path[match(organism, SPECIES$common_name)]
   syn_prot_structure_paths <- get_synaptic_protein_structure_paths(organism)
   
+  # Write geometric description of each synaptic protein to geom_file CSV
   done <- lapply(syn_prot_structure_paths, function(path) {
     
     residue_df <- load_residue_level_structure(path)
-    geom_df <- residue_df
     
     # Compute confidence-weighted eigenvectors and eigenvalues
+    eig_vectors, eig_values, pc_scores <- weighted_pca(residue_df)
     
     # Compute geometric descriptors
     # length
@@ -69,8 +99,10 @@ compute_protein_geometries <- function(organism) {
     # low pLDDT fraction (disorder proxy)
     
     # Append line to CSV
+    geom_df <- residue_df
     write_csv(geom_df, geom_file, append = TRUE)
     
   })
+  log_info(glue("Computed {organism} protein geometries"))
   
 }

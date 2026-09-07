@@ -3,7 +3,7 @@
 
 # Download and clean GO slim synapse data
 fetch_go_slim_synapse_data <- function() {
-  goslim_path <- "data/goslim_synapse.tsv"
+  goslim_path <- "data/goa/goslim_synapse.tsv"
   endpoint <- "http://release.geneontology.org/2026-08-05/ontology/subsets/goslim_synapse.tsv"
   request(endpoint) |> req_perform(goslim_path)
   
