@@ -90,7 +90,9 @@ SPECIES <- tibble(
 SPECIES <- SPECIES |>
   mutate(
     goa_path = file.path("data/goa", basename(goa_endpoint)),
-    afdb_path = file.path("data/afdb", basename(afdb_endpoint))
+    afdb_tar_path = file.path("data/afdb_tar", basename(afdb_endpoint)),
+    atom_sites_dir = file.path("data/atom_sites", common_name),
+    residue_sites_dir = file.path("data/residue_sites", common_name)
   )
 
 

@@ -2,8 +2,8 @@
 # Author: Ciel Baumann
 # Last updated: NA
 
-# What structural archetypes exist among synaptic proteins, and what biological 
-# functions do they correspond to?
+# What structural archetypes exist among synaptic proteins across species, and 
+# what biological functions do they correspond to?
 
 
 
