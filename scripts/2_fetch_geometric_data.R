@@ -43,7 +43,10 @@ load_residue_level_structure <- function(path) {
   atom_site_df <- read_csv(path, show_col_types = FALSE)
   residue_site_df <- atom_site_df |>
     group_by(residue) |>
-    summarise(x = mean(x), y = mean(y), z = mean(z), pLDDT = mean(pLDDT))
+    summarise(
+      x = mean(x), y = mean(y), z = mean(z), 
+      pLDDT = mean(pLDDT), .groups = "drop"
+    )
   return(residue_site_df)
 }
 
@@ -75,7 +78,6 @@ weighted_pca <- function(residue_df) {
     eigenvectors = eig_vectors,
     eigenvalues = eig_values,
     pc_scores = pc_scores,
-    weighted_mean = weighted_mean,
     centred_coords = centred_coords,
     weights = weights
   ))
@@ -90,7 +92,7 @@ get_radial_distances <- function(centred_coords) {
 
 # Get the length between the most distant residues in a protein
 get_length_along_pc1 <- function(pc_scores) {
-  pc1 <- pca$pc_scores[, 1]
+  pc1 <- pc_scores[, 1]
   return(max(pc1) - min(pc1))
 }
 
@@ -146,11 +148,11 @@ compute_protein_geometries <- function(organism) {
 
     # Do confidence-weighted PCA and get radial distances
     wpca <- weighted_pca(residue_df)
-    radial_distances <- get_radial_distances(centred_coords)
+    radial_distances <- get_radial_distances(wpca$centred_coords)
 
     # Compute geometric descriptors and append to csv
     geom_df <- tibble(
-      uniprot <- sub(".csv", "", basename(path)),
+      uniprot = sub(".csv", "", basename(path)),
       length = get_length_along_pc1(wpca$pc_scores),
       rg = get_radius_of_gyration(wpca$centred_coords, wpca$weights),
       eccentricity = get_eccentricity(wpca$eigenvalues),
