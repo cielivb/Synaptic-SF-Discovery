@@ -116,6 +116,7 @@ clusterEvalQ(CLUSTER, {
 })
 
 source("scripts/1_fetch_synaptic_protein_go_data.R")
+source("scripts/2_fetch_geometric_data.R")
 
 clusterExport(CLUSTER, c(
   "SPECIES",
