@@ -93,7 +93,8 @@ SPECIES <- SPECIES |>
     goa_path = file.path("data/goa", basename(goa_endpoint)),
     afdb_tar_path = file.path("data/afdb_tar", basename(afdb_endpoint)),
     atom_sites_dir = file.path("data/atom_sites", common_name),
-    geom_path = file.path("data/geometry", glue("{common_name}_geometry.csv"))
+    geom_path = file.path("data/geometry", glue("{common_name}_geometry.csv")),
+    clusters_path = file.path("data/clusters", glue("{common_name}_clusters.csv"))
   )
 
 
@@ -103,6 +104,7 @@ CLUSTER <- makeCluster(detectCores())
 
 clusterExport(CLUSTER, "LOGFILE")
 clusterEvalQ(CLUSTER, {
+  library(dbscan)
   library(dplyr)
   library(ggplot2)
   library(glue)
@@ -112,6 +114,7 @@ clusterEvalQ(CLUSTER, {
   library(logger)
   library(parallel)
   library(readr)
+  library(uwot)
   log_appender(appender_console)
   log_appender(appender_file(LOGFILE))
 })

@@ -56,8 +56,7 @@ weighted_pca <- function(residue_df) {
   
   # Extract coordinate matrix and weights
   coords <- residue_df |> select(x, y, z)
-  weights <- residue_df$pLDDT
-  weights <- weights / sum(weights) # Normalise weights
+  weights <- residue_df$weights
   
   # Centre data using weighted mean
   weighted_mean <- colSums(coords * weights)
@@ -144,23 +143,45 @@ compute_protein_geometries <- function(organism) {
   
   # Write geometric description of each synaptic protein to geom_file CSV
   done <- lapply(syn_prot_structure_paths, function(path) {
-    residue_df <- load_residue_level_structure(path)
+    
+    # Load structure data and create evenly weighted weights column
+    full_residue_df <- load_residue_level_structure(path) |>
+      mutate(weights = 1)
 
+    # Create a high confidence subset and normalise pLDDT into true weights
+    high_conf_subset_df <- full_residue_df |> 
+      filter(pLDDT >= 70) |>
+      mutate(weights = pLDDT / sum(pLDDT))
+    
     # Do confidence-weighted PCA and get radial distances
-    wpca <- weighted_pca(residue_df)
-    radial_distances <- get_radial_distances(wpca$centred_coords)
-
+    wpca_f <- weighted_pca(full_residue_df)
+    wpca_hc <- weighted_pca(high_conf_subset_df)
+    radial_distances_f <- get_radial_distances(full_wpca$centred_coords)
+    radial_distances_hc <- get_radial_distances(hc_wpca$centred_coords)
+    
     # Compute geometric descriptors and append to csv
     geom_df <- tibble(
       uniprot = sub(".csv", "", basename(path)),
-      length = get_length_along_pc1(wpca$pc_scores),
-      rg = get_radius_of_gyration(wpca$centred_coords, wpca$weights),
-      eccentricity = get_eccentricity(wpca$eigenvalues),
-      coeff_var = get_coefficient_of_variation(radial_distances),
-      kurtosis = get_kurtosis(radial_distances),
+      high_pLDDT = get_high_pLDDT_fraction(residue_df$pLDDT), # confident core
       low_pLDDT = get_low_pLDDT_fraction(residue_df$pLDDT), # disorder proxy
-      high_pLDDT = get_high_pLDDT_fraction(residue_df$pLDDT) # confident core
-    )
+      length_f = get_length_along_pc1(wpca_f$pc_scores),
+      length_hc = get_length_along_pc1(wpca_hc$pc_scores),
+      rg_f = get_radius_of_gyration(wpca_f$centred_coords, wpca_f$weights),
+      rg_hc = get_radius_of_gyration(wpca_hc$centred_coords, wpca_hc$weights),
+      eccentricity_f = get_eccentricity(wpca_f$eigenvalues),
+      eccentricity_hc = get_eccentricity(wpca_hc$eigenvalues),
+      coeff_var_f = get_coefficient_of_variation(radial_distances_f),
+      coeff_var_hc = get_coefficient_of_variation(radial_distances_hc),
+      kurtosis_f = get_kurtosis(radial_distances_f),
+      kurtosis_hc = get_kurtosis(radial_distances_hc),
+    ) |> 
+      mutate(
+        length_ratio = length_f / length_hc,
+        rg_ratio = rg_f / rg_hc,
+        eccentricity_ratio = eccentricity_f / eccentricity_hc,
+        coeff_var_ratio = coeff_var_f / coeff_var_hc,
+        kurtosis_ratio = kurtosis_f / kurtosis_hc
+      )
     write_csv(geom_df, geom_file, append = TRUE)
     
   })

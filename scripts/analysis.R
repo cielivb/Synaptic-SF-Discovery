@@ -12,23 +12,25 @@ source("scripts/setup.R")
 # Fetch and clean synaptic protein GO data, creating one CSV per organism 
 # mapping synaptic proteins to their GO terms
 log_info("Fetching GO Slim synapse data ...")
-fetch_go_slim_synapse_data()
+#fetch_go_slim_synapse_data()
 log_info("Downloading GO metadata ...")
-done <- lapply(SPECIES$common_name, download_go_metadata)
+#done <- lapply(SPECIES$common_name, download_go_metadata)
 log_info("Filtering GO metadata ...")
-done <- parLapplyLB(CLUSTER, SPECIES$common_name, filter_organism_go_metadata)
+#done <- parLapplyLB(CLUSTER, SPECIES$common_name, filter_organism_go_metadata)
 
 # Download synaptic protein structure files and generate geometric descriptors,
 # creating a CSV per organism where each row represents the geometric properties
 # of a protein in that organism's proteome
-log_info("Fetching AFDB predicted structure data ...")
-done <- lapply(SPECIES$common_name, download_organism_structure_data)
+log_info("Fetching AFDB predicted structure data ...") # ~2.5 hrs on my laptop
+#done <- lapply(SPECIES$common_name, download_organism_structure_data)
 log_info("Extracting atom site data ...")
 done <- parLapplyLB(CLUSTER, SPECIES$common_name, create_atom_site_csvs)
 log_info("Computing protein geometries ...")
 done <- parLapplyLB(CLUSTER, SPECIES$common_name, compute_protein_geometries)
 
 # Cluster proteins by geometric properties within each organism
+log_info("Clustering proteins by geometry ...")
+done <- parLapplyLB(CLUSTER, SPECIES$common_name, cluster_proteins_by_geometry)
 
 # Discover geometrically similar clusters across species
 
