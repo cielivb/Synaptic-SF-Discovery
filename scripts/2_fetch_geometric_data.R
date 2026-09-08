@@ -13,24 +13,22 @@ download_organism_structure_data <- function(organism) {
 # Extract atom site data for each protein to csv
 create_atom_site_csvs <- function(organism) {
   afdb_tar_path <- SPECIES$afdb_tar_path[match(organism, SPECIES$common_name)]
-  system(glue("scripts/extract_atom_sites.sh {afdb_tar_path}"))
+  system(glue("scripts/extract_atom_sites.sh {afdb_tar_path} {organism}"))
   log_info(glue("Created {organism} atom site csv files"))
 }
 
 
 # Get a list containing synaptic protein structure file paths
 get_synaptic_protein_structure_paths <- function(organism) {
-  
   # Get synaptic proteins in organism
   go_df <- read_csv(glue("data/goa/{organism}_clean.csv"), show_col_types = FALSE)
   synaptic_proteins <- go_df |> distinct(uniprot)
-  
   # Get Uniprot accessions from AFDB structure data file names and keep only
   # those accessions and filepaths associated with synaptic proteins
   atom_sites_dir <- SPECIES$atom_sites_dir[match(organism, SPECIES$common_name)]
   df <- tibble(files = list.files(atom_sites_dir, full.names = TRUE))
   df <- df |>
-    mutate(uniprot = sub(".csv", "", basename(files))) |>
+    mutate(uniprot = strsplit(basename(files), "-") |> sapply(`[[`, 2)) |>
     filter(uniprot %in% synaptic_proteins$uniprot)
   return(as.list(df$files))
   
@@ -139,7 +137,7 @@ compute_protein_geometries <- function(organism) {
   
   geom_file <- SPECIES$geom_path[match(organism, SPECIES$common_name)]
   syn_prot_structure_paths <- get_synaptic_protein_structure_paths(organism)
-  
+
   # Write geometric description of each synaptic protein to geom_file CSV
   lapply(syn_prot_structure_paths, function(path) {
     

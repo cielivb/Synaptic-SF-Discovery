@@ -24,7 +24,7 @@ log_info("Filtering GO metadata ...")
 log_info("Fetching AFDB predicted structure data ...") # ~2.5 hrs on my laptop
 #done <- lapply(SPECIES$common_name, download_organism_structure_data)
 log_info("Extracting atom site data ...")
-done <- parLapplyLB(CLUSTER, SPECIES$common_name, create_atom_site_csvs)
+#done <- parLapplyLB(CLUSTER, SPECIES$common_name, create_atom_site_csvs)
 log_info("Computing protein geometries ...")
 done <- parLapplyLB(CLUSTER, SPECIES$common_name, compute_protein_geometries)
 

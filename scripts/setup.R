@@ -121,6 +121,7 @@ clusterEvalQ(CLUSTER, {
 
 source("scripts/1_fetch_synaptic_protein_go_data.R")
 source("scripts/2_fetch_geometric_data.R")
+source("scripts/3_discover_geometric_protein_clusters.R")
 
 clusterExport(CLUSTER, c(
   "SPECIES",
@@ -144,8 +145,11 @@ clusterExport(CLUSTER, c(
   "get_kurtosis",
   "get_low_pLDDT_fraction",
   "get_high_pLDDT_fraction",
-  "compute_protein_geometries"
+  "compute_protein_geometries",
   
+  # 3_discover_geometric_protein_clusters.R functions
+  "cluster_proteins_by_geometry",
+  "plot_cluster_feature_distr_within_organism"
   
 ))
 

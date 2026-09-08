@@ -15,10 +15,10 @@ mkdir -p "$EXTRACTED_DIR" "$ATOM_SITE_DIR"
 tar -xf "$BULK_AFDB_FILE" -C "$EXTRACTED_DIR"
 
 # Unzip all .pdb.gz files
-gzip -d "$EXTRACTED_DIR"/*.pdb.gz
+gzip -d "$EXTRACTED_DIR"*.pdb.gz
 
 # Extract atomsite data from each .pdb file
-for FILE in "$EXTRACTED_DIR"/*.pdb; do
+for FILE in "$EXTRACTED_DIR"*.pdb; do
 
     OUT_CSV="$ATOM_SITE_DIR/$(basename "$FILE" .pdb).csv"
     echo "residue,x,y,z,pLDDT" > "$OUT_CSV" # header line
