@@ -32,7 +32,7 @@ get_synaptic_protein_structure_paths <- function(organism) {
   df <- tibble(files = list.files(atom_sites_dir, full.names = TRUE))
   df <- df |>
     mutate(uniprot = sub(".csv", "", basename(files))) |>
-    filter(!is.na(match(uniprot, synaptic_proteins$uniprot)))
+    filter(uniprot %in% synaptic_proteins$uniprot)
   return(as.list(df$files))
   
 }
@@ -51,7 +51,7 @@ load_residue_level_structure <- function(path) {
 }
 
 
-# Get PC scores, eigenvectors, and eigenvalues, weighting by pLDDT
+# Get PC scores, eigenvectors, and eigenvalues, weighting by weights column
 weighted_pca <- function(residue_df) {
   
   # Extract coordinate matrix and weights
@@ -59,11 +59,11 @@ weighted_pca <- function(residue_df) {
   weights <- residue_df$weights
   
   # Centre data using weighted mean
-  weighted_mean <- colSums(coords * weights)
+  weighted_mean <- colSums(coords * weights) / sum(weights)
   centred_coords <- sweep(coords, 2, weighted_mean)
   
   # Compute weighted covariance matrix
-  cov_w <- t(centred_coords) %*% (centred_coords * weights)
+  cov_w <- t(centred_coords) %*% (centred_coords * weights) / sum(weights)
   
   # Do an eigendecomposition
   eig <- eigen(cov_w)
@@ -145,25 +145,25 @@ compute_protein_geometries <- function(organism) {
   done <- lapply(syn_prot_structure_paths, function(path) {
     
     # Load structure data and create evenly weighted weights column
-    full_residue_df <- load_residue_level_structure(path) |>
+    residue_df_f <- load_residue_level_structure(path) |>
       mutate(weights = 1)
 
     # Create a high confidence subset and normalise pLDDT into true weights
-    high_conf_subset_df <- full_residue_df |> 
+    residue_df_hc <- residue_df_f |> 
       filter(pLDDT >= 70) |>
       mutate(weights = pLDDT / sum(pLDDT))
     
     # Do confidence-weighted PCA and get radial distances
-    wpca_f <- weighted_pca(full_residue_df)
-    wpca_hc <- weighted_pca(high_conf_subset_df)
-    radial_distances_f <- get_radial_distances(full_wpca$centred_coords)
-    radial_distances_hc <- get_radial_distances(hc_wpca$centred_coords)
+    wpca_f <- weighted_pca(residue_df_f)
+    wpca_hc <- weighted_pca(residue_df_hc)
+    radial_distances_f <- get_radial_distances(wpca_f$centred_coords)
+    radial_distances_hc <- get_radial_distances(wpca_hc$centred_coords)
     
     # Compute geometric descriptors and append to csv
     geom_df <- tibble(
       uniprot = sub(".csv", "", basename(path)),
-      high_pLDDT = get_high_pLDDT_fraction(residue_df$pLDDT), # confident core
-      low_pLDDT = get_low_pLDDT_fraction(residue_df$pLDDT), # disorder proxy
+      high_pLDDT = get_high_pLDDT_fraction(residue_df_f$pLDDT), # confident core
+      low_pLDDT = get_low_pLDDT_fraction(residue_df_f$pLDDT), # disorder proxy
       length_f = get_length_along_pc1(wpca_f$pc_scores),
       length_hc = get_length_along_pc1(wpca_hc$pc_scores),
       rg_f = get_radius_of_gyration(wpca_f$centred_coords, wpca_f$weights),
@@ -173,7 +173,7 @@ compute_protein_geometries <- function(organism) {
       coeff_var_f = get_coefficient_of_variation(radial_distances_f),
       coeff_var_hc = get_coefficient_of_variation(radial_distances_hc),
       kurtosis_f = get_kurtosis(radial_distances_f),
-      kurtosis_hc = get_kurtosis(radial_distances_hc),
+      kurtosis_hc = get_kurtosis(radial_distances_hc)
     ) |> 
       mutate(
         length_ratio = length_f / length_hc,
