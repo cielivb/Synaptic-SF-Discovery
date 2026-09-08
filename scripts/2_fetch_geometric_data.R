@@ -13,8 +13,7 @@ download_organism_structure_data <- function(organism) {
 # Extract atom site data for each protein to csv
 create_atom_site_csvs <- function(organism) {
   afdb_tar_path <- SPECIES$afdb_tar_path[match(organism, SPECIES$common_name)]
-  atom_sites_dir <- SPECIES$atom_sites_dir[match(organism, SPECIES$common_name)]
-  system(glue("scripts/extract_atom_sites.sh {afdb_tar_path} {atom_sites_dir}"))
+  system(glue("scripts/extract_atom_sites.sh {afdb_tar_path}"))
   log_info(glue("Created {organism} atom site csv files"))
 }
 
