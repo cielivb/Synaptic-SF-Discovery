@@ -55,7 +55,7 @@ load_residue_level_structure <- function(path) {
 weighted_pca <- function(residue_df) {
   
   # Extract coordinate matrix and weights
-  coords <- residue_df |> select(x, y, z)
+  coords <- residue_df |> select(x, y, z) |> as.matrix()
   weights <- residue_df$weights
   
   # Centre data using weighted mean
@@ -142,49 +142,65 @@ compute_protein_geometries <- function(organism) {
   syn_prot_structure_paths <- get_synaptic_protein_structure_paths(organism)
   
   # Write geometric description of each synaptic protein to geom_file CSV
-  done <- lapply(syn_prot_structure_paths, function(path) {
+  lapply(syn_prot_structure_paths, function(path) {
     
-    # Load structure data and create evenly weighted weights column
+    # Load structure data and create evenly weighted weights column, then
+    # create geometric descriptor tibble for full structure
     residue_df_f <- load_residue_level_structure(path) |>
       mutate(weights = 1)
-
-    # Create a high confidence subset and normalise pLDDT into true weights
-    residue_df_hc <- residue_df_f |> 
-      filter(pLDDT >= 70) |>
-      mutate(weights = pLDDT / sum(pLDDT))
-    
-    # Do confidence-weighted PCA and get radial distances
     wpca_f <- weighted_pca(residue_df_f)
-    wpca_hc <- weighted_pca(residue_df_hc)
     radial_distances_f <- get_radial_distances(wpca_f$centred_coords)
-    radial_distances_hc <- get_radial_distances(wpca_hc$centred_coords)
-    
-    # Compute geometric descriptors and append to csv
-    geom_df <- tibble(
+    geom_df_f <- tibble(
       uniprot = sub(".csv", "", basename(path)),
       high_pLDDT = get_high_pLDDT_fraction(residue_df_f$pLDDT), # confident core
       low_pLDDT = get_low_pLDDT_fraction(residue_df_f$pLDDT), # disorder proxy
       length_f = get_length_along_pc1(wpca_f$pc_scores),
-      length_hc = get_length_along_pc1(wpca_hc$pc_scores),
       rg_f = get_radius_of_gyration(wpca_f$centred_coords, wpca_f$weights),
-      rg_hc = get_radius_of_gyration(wpca_hc$centred_coords, wpca_hc$weights),
       eccentricity_f = get_eccentricity(wpca_f$eigenvalues),
-      eccentricity_hc = get_eccentricity(wpca_hc$eigenvalues),
       coeff_var_f = get_coefficient_of_variation(radial_distances_f),
-      coeff_var_hc = get_coefficient_of_variation(radial_distances_hc),
-      kurtosis_f = get_kurtosis(radial_distances_f),
-      kurtosis_hc = get_kurtosis(radial_distances_hc)
-    ) |> 
+      kurtosis_f = get_kurtosis(radial_distances_f)
+    )
+
+    # Create a high confidence subset and normalise pLDDT into true weights,
+    # then create geometric descriptor tibble for core/high confidence subset
+    residue_df_hc <- residue_df_f |> 
+      filter(pLDDT >= 70)
+    if (nrow(residue_df_hc) < 3) { # too few residues for PCA
+      geom_df_hc <- tibble(
+        length_hc = NA, rg_hc = NA, eccentricity_hc = NA,
+        coeff_var_hc = NA, kurtosis_hc = NA
+      )
+    } else {
+      residue_df_hc <- residue_df_hc |> mutate(weights = pLDDT / sum(pLDDT))
+      wpca_hc <- weighted_pca(residue_df_hc)
+      radial_distances_hc <- get_radial_distances(wpca_hc$centred_coords)
+      geom_df_hc <- tibble(
+        length_hc = get_length_along_pc1(wpca_hc$pc_scores),
+        rg_hc = get_radius_of_gyration(wpca_hc$centred_coords, wpca_hc$weights),
+        eccentricity_hc = get_eccentricity(wpca_hc$eigenvalues),
+        coeff_var_hc = get_coefficient_of_variation(radial_distances_hc),
+        kurtosis_hc = get_kurtosis(radial_distances_hc)
+      )
+    }
+    
+    # Merge full structure geometric descriptor tibble with subset tibble,
+    # then compute ratios and write to csv
+    geom_df <- bind_cols(geom_df_f, geom_df_hc) |>
       mutate(
-        length_ratio = length_f / length_hc,
-        rg_ratio = rg_f / rg_hc,
-        eccentricity_ratio = eccentricity_f / eccentricity_hc,
-        coeff_var_ratio = coeff_var_f / coeff_var_hc,
-        kurtosis_ratio = kurtosis_f / kurtosis_hc
+        length_ratio = ifelse(is.na(length_hc), NA, length_f / length_hc),
+        rg_ratio = ifelse(is.na(rg_hc), NA, rg_f / rg_hc),
+        eccentricity_ratio = ifelse(
+          is.na(eccentricity_hc), NA, eccentricity_f / eccentricity_hc
+        ),
+        coeff_var_ratio = ifelse(
+          is.na(coeff_var_hc), NA, coeff_var_f / coeff_var_hc
+        ),
+        kurtosis_ratio = ifelse(is.na(kurtosis_hc), NA, kurtosis_f / kurtosis_hc)
       )
     write_csv(geom_df, geom_file, append = TRUE)
     
   })
+  
   log_info(glue("Computed {organism} protein geometries"))
   
 }
