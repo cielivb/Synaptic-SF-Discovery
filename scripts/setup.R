@@ -5,6 +5,7 @@
 
 system("mkdir -p data/goa results/goa_cleaning")
 system("mkdir -p data/afdb_tar data/atom_sites data/geometry")
+system("mkdir -p data/clusters results/clusters/umap")
 
 
 ### RESTORE PACKAGES FROM LOCKFILE ---------------------------------------------
@@ -29,6 +30,7 @@ library(jsonlite)
 library(logger)
 library(parallel)
 library(readr)
+library(tidyr)
 
 
 ### SET UP LOGGER AND LOG EXECUTION METADATA -----------------------------------
@@ -114,6 +116,7 @@ clusterEvalQ(CLUSTER, {
   library(logger)
   library(parallel)
   library(readr)
+  library(tidyr)
   library(uwot)
   log_appender(appender_console)
   log_appender(appender_file(LOGFILE))
@@ -149,7 +152,8 @@ clusterExport(CLUSTER, c(
   
   # 3_discover_geometric_protein_clusters.R functions
   "cluster_proteins_by_geometry",
-  "plot_cluster_feature_distr_within_organism"
+  "plot_cluster_feature_distr_within_organism",
+  "plot_umap_embedding_clusters"
   
 ))
 

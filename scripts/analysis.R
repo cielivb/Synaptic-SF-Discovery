@@ -26,7 +26,7 @@ log_info("Fetching AFDB predicted structure data ...") # ~2.5 hrs on my laptop
 log_info("Extracting atom site data ...")
 #done <- parLapplyLB(CLUSTER, SPECIES$common_name, create_atom_site_csvs)
 log_info("Computing protein geometries ...")
-done <- parLapplyLB(CLUSTER, SPECIES$common_name, compute_protein_geometries)
+#done <- parLapplyLB(CLUSTER, SPECIES$common_name, compute_protein_geometries)
 
 # Cluster proteins by geometric properties within each organism
 log_info("Clustering proteins by geometry ...")

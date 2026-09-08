@@ -27,7 +27,7 @@ get_synaptic_protein_structure_paths <- function(organism) {
   # those accessions and filepaths associated with synaptic proteins
   atom_sites_dir <- SPECIES$atom_sites_dir[match(organism, SPECIES$common_name)]
   df <- tibble(files = list.files(atom_sites_dir, full.names = TRUE))
-  df <- df |>
+  df <- df |> 
     mutate(uniprot = strsplit(basename(files), "-") |> sapply(`[[`, 2)) |>
     filter(uniprot %in% synaptic_proteins$uniprot)
   return(as.list(df$files))
@@ -148,7 +148,7 @@ compute_protein_geometries <- function(organism) {
     wpca_f <- weighted_pca(residue_df_f)
     radial_distances_f <- get_radial_distances(wpca_f$centred_coords)
     geom_df_f <- tibble(
-      uniprot = sub(".csv", "", basename(path)),
+      uniprot = strsplit(basename(path), "-")[[1]][2],
       high_pLDDT = get_high_pLDDT_fraction(residue_df_f$pLDDT), # confident core
       low_pLDDT = get_low_pLDDT_fraction(residue_df_f$pLDDT), # disorder proxy
       length_f = get_length_along_pc1(wpca_f$pc_scores),
@@ -194,7 +194,11 @@ compute_protein_geometries <- function(organism) {
         ),
         kurtosis_ratio = ifelse(is.na(kurtosis_hc), NA, kurtosis_f / kurtosis_hc)
       )
-    write_csv(geom_df, geom_file, append = TRUE)
+    if (!file.exists(geom_file)) {
+      write_csv(geom_df, geom_file, append = FALSE, col_names = TRUE)
+    } else {
+      write_csv(geom_df, geom_file, append = TRUE, col_names = FALSE)
+    }
     
   })
   
