@@ -28,15 +28,18 @@ pairwise_permanova <- function(df) {
   
   # Perform PERMANOVA on every cluster pair
   clusterExport(CLUSTER, "df")
-  results <- parLapplyLB(CLUSTER, pair_list, function(pair) {
+  results <- parLapply(CLUSTER, pair_list, function(pair) {
     
-    df_pair <- df |> filter(label %in% pair)
+    df_pair <- df[df$label %in% pair, ]
     
-    permanova_pair <- tibble(adonis2(
-      df_pair |> select(-species, -cluster, -label) ~ label,
-      data = df_pair, method = "euclidean"
-    ))
-    label_row <- permanova_pair[1, ] # label row is first row
+    permanova_pair <- as.data.frame(
+      adonis2(
+        df_pair[, !(names(df_pair) %in% c("species", "cluster", "label"))] ~ label,
+        data = df_pair,
+        method = "euclidean"
+      )
+    )
+    label_row <- permanova_pair["label", ]
     
     return(list(
       cluster_1 = pair[1],
