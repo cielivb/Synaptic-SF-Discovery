@@ -34,9 +34,9 @@ pairwise_permanova <- function(df) {
     
     permanova_pair <- tibble(adonis2(
       df_pair |> select(-species, -cluster, -label) ~ label,
-      data = df, method = "euclidean"
+      data = df_pair, method = "euclidean"
     ))
-    label_row <- permanova_pair |> filter(Term == "label")
+    label_row <- permanova_pair[1, ] # label row is first row
     
     return(list(
       cluster_1 = pair[1],

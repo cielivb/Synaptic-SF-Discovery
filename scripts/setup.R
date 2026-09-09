@@ -120,6 +120,7 @@ clusterEvalQ(CLUSTER, {
   library(readr)
   library(tidyr)
   library(uwot)
+  library(vegan)
   log_appender(appender_console)
   log_appender(appender_file(LOGFILE))
 })
