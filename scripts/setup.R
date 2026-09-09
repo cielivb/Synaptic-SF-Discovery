@@ -32,6 +32,7 @@ library(logger)
 library(parallel)
 library(readr)
 library(tidyr)
+library(vegan)
 
 
 ### SET UP LOGGER AND LOG EXECUTION METADATA -----------------------------------
@@ -113,6 +114,7 @@ clusterEvalQ(CLUSTER, {
   library(glue)
   library(gridExtra)
   library(httr2)
+  library(igraph)
   library(jsonlite)
   library(logger)
   library(parallel)
@@ -154,11 +156,10 @@ clusterExport(CLUSTER, c(
   
   # 3_discover_geometric_protein_clusters.R functions
   "cluster_proteins_by_geometry",
-  "plot_cluster_feature_distr_within_organism",
   "plot_umap_embedding_clusters",
   
   # 4_analyse_cluster_similarities.R functions
-  "discover_similar_clusters_across_species"
+  "pairwise_permanova"
   
 ))
 

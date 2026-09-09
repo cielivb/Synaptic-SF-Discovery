@@ -29,8 +29,8 @@ log_info("Computing protein geometries ...")
 #done <- parLapplyLB(CLUSTER, SPECIES$common_name, compute_protein_geometries)
 
 # Cluster proteins by geometric properties within each organism
-log_info("Clustering proteins by geometry ...")
-done <- parLapplyLB(CLUSTER, SPECIES$common_name, cluster_proteins_by_geometry)
+log_info("Clustering proteins by geometry ...") # TODO - tune parameters
+#done <- parLapplyLB(CLUSTER, SPECIES$common_name, cluster_proteins_by_geometry)
 
 # Discover geometrically similar clusters across species
 log_info("Discovering similar clusters across species ...")
