@@ -28,7 +28,7 @@ pairwise_permanova <- function(df) {
   
   # Perform PERMANOVA on every cluster pair
   clusterExport(CLUSTER, "df")
-  results <- parLapplyLB(pair_list, function(pair) {
+  results <- parLapplyLB(CLUSTER, pair_list, function(pair) {
     
     df_pair <- df |> filter(label %in% pair)
     
@@ -92,20 +92,20 @@ discover_similar_clusters_across_species <- function() {
     )
   
   # Run overall PERMANOVA on full feature set
-  full_permanova <- tibble(adonis2(
-    full_df |> select(-species, -cluster, -label) ~ species * label,
-    data = full_df, method = "euclidean"
-  ))
-  write_csv(full_permanova, "results/clusters/similarity/permanova_full.csv")
+  #full_permanova <- tibble(adonis2(
+  #  full_df |> select(-species, -cluster, -label) ~ species / label,
+  #  data = full_df, method = "euclidean"
+  #))
+  #write_csv(full_permanova, "results/clusters/similarity/permanova_full.csv")
   
   # Run overall PERMANOVA on feature subset
-  subset_df <- full_df |>
-    select(species, label, length_f, length_hc, high_pLDDT, low_pLDDT)
-  subset_permanova <- tibble(adonis2(
-    subset_df |> select(-species, -label) ~ species * label,
-    data = subset_df, method = "euclidean"
-  ))
-  write_csv(subset_permanova, "results/clusters/similarity/permanova_subset.csv")
+  #subset_df <- full_df |>
+  #  select(species, label, length_f, length_hc, high_pLDDT, low_pLDDT)
+  #subset_permanova <- tibble(adonis2(
+  #  subset_df |> select(-species, -label) ~ species / label,
+  #  data = subset_df, method = "euclidean"
+  #))
+  #write_csv(subset_permanova, "results/clusters/similarity/permanova_subset.csv")
   
   # Do pairwise PERMANOVA, adjust for multiple testing, and write outputs
   raw_pw_permanova_results_full <- pairwise_permanova(full_df)
