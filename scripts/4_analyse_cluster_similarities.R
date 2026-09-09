@@ -50,7 +50,6 @@ pairwise_permanova <- function(df) {
     
   })
   
-  clusterEvalQ(CLUSTER, rm(df)) # Free worker memory
   return(bind_rows(results))
 
 }
@@ -97,8 +96,8 @@ discover_similar_clusters_across_species <- function() {
   
   # Identify similar clusters (those that are not statistically significantly 
   # different after multiple testing) and visualise 
-  system(glue("scripts/find_similar_clusters.py {pw_permanova_full_path}"))
-  system(glue("scripts/find_similar_clusters.py {pw_permanova_subset_path}"))
+  system(glue("scripts/find_similar_clusters.py --file {pw_permanova_full_path} --title 'Similar Clusters Using Full Feature Set'"))
+  system(glue("scripts/find_similar_clusters.py --file {pw_permanova_subset_path} --title 'Similar Clusters Using Reduced Feature Set'"))
   
   # Visualise results with parallel coordinates chart
   
