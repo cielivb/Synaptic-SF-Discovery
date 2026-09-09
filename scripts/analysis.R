@@ -1,32 +1,48 @@
-# Influence of Synapse Type on Receptor Protein Geometry in Homo Sapiens
+# Cross-Taxa Discovery of Synaptic Protein Structural Archetypes and Function
 # Author: Ciel Baumann
 # Last updated: NA
 
+# What structural archetypes exist among synaptic proteins across species, and 
+# what biological functions do they correspond to?
+
+
+
 source("scripts/setup.R")
-source("scripts/geometry.R")
-log_info("CONGRATS! YOU GOT THIS FAR!")
 
-CLUSTER <- makeCluster(detectCores())
+# Fetch and clean synaptic protein GO data, creating one CSV per organism 
+# mapping synaptic proteins to their GO terms
+log_info("Fetching GO Slim synapse data ...")
+#fetch_go_slim_synapse_data()
+log_info("Downloading GO metadata ...")
+#done <- lapply(SPECIES$common_name, download_go_metadata)
+log_info("Filtering GO metadata ...")
+#done <- parLapplyLB(CLUSTER, SPECIES$common_name, filter_organism_go_metadata)
 
-csv_files <- list.files("data_csv", pattern = "\\.csv$", full.names = TRUE)
-geoms <- parLapplyLB(CLUSTER, csv_files, build_geom_tibble)
-combined <- dplyr::bind_rows(geoms)
+# Download synaptic protein structure files and generate geometric descriptors,
+# creating a CSV per organism where each row represents the geometric properties
+# of a protein in that organism's proteome
+log_info("Fetching AFDB predicted structure data ...") # ~2.5 hrs on my laptop
+#done <- lapply(SPECIES$common_name, download_organism_structure_data)
+log_info("Extracting atom site data ...")
+#done <- parLapplyLB(CLUSTER, SPECIES$common_name, create_atom_site_csvs)
+log_info("Computing protein geometries ...")
+#done <- parLapplyLB(CLUSTER, SPECIES$common_name, compute_protein_geometries)
 
+# Cluster proteins by geometric properties within each organism
+log_info("Clustering proteins by geometry ...") # TODO - tune parameters
+#done <- parLapplyLB(CLUSTER, SPECIES$common_name, cluster_proteins_by_geometry)
+
+# Discover geometrically similar clusters across species
+log_info("Discovering similar clusters across species ...")
+discover_similar_clusters_across_species()
+
+# Calculate functional enrichment for each cluster
+
+# Visualise functional enrichment for each cluster
+
+# TP: determine whether different clusters have statistically different 
+# functional enrichment
+
+# Analysis complete!
 stopCluster(CLUSTER)
-
-
-# 
-# ## Categorise Proteins by GO Annotations
-# Add Inhibitory Synapse Receptor and Excitatory Synapse Receptor column to
-# Geometry Descriptor Table, by iteratively getting and filtering GO annotations
-# per protein.
-# 
-# ## Visualise Geometric Distributions
-# 
-# ## Get Statistical Significance and Effect Sizes
-# Do a nonparametric test to determine whether excitatory synapse receptor proteins,
-# inhibitory synapse receptor proteins, and other proteins have different geometric
-# distributions. I am not sure yet whether to use Mann-Whitney U or Kruskal-Wallis
-# or something else. I could use Cliff's Delta for effect size.
-# 
-# ## Create Post-Hoc Visualisations if Applicable
+log_info("End!")
