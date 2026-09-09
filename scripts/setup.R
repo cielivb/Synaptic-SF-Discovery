@@ -6,6 +6,7 @@
 system("mkdir -p data/goa results/goa_cleaning")
 system("mkdir -p data/afdb_tar data/atom_sites data/geometry")
 system("mkdir -p data/clusters results/clusters/umap")
+system("mkdir -p results/clusters/similarity")
 
 
 ### RESTORE PACKAGES FROM LOCKFILE ---------------------------------------------
@@ -125,6 +126,7 @@ clusterEvalQ(CLUSTER, {
 source("scripts/1_fetch_synaptic_protein_go_data.R")
 source("scripts/2_fetch_geometric_data.R")
 source("scripts/3_discover_geometric_protein_clusters.R")
+source("scripts/4_analyse_cluster_similarities.R")
 
 clusterExport(CLUSTER, c(
   "SPECIES",
@@ -153,7 +155,10 @@ clusterExport(CLUSTER, c(
   # 3_discover_geometric_protein_clusters.R functions
   "cluster_proteins_by_geometry",
   "plot_cluster_feature_distr_within_organism",
-  "plot_umap_embedding_clusters"
+  "plot_umap_embedding_clusters",
+  
+  # 4_analyse_cluster_similarities.R functions
+  "discover_similar_clusters_across_species"
   
 ))
 

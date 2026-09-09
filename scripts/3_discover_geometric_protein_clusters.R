@@ -1,13 +1,6 @@
 # Cluster proteins by geometry and identify similar clusters across taxa
 
 
-# Create a violin plot where each violin represents a feature and the panels
-# represent geometric protein clusters within an organism
-plot_cluster_feature_distr_within_organism <- function(organism) {
-  return() # TODO
-}
-
-
 # Plot UMAP embedding, colouring points by clusters
 plot_umap_embedding_clusters <- function(geom_df, organism) {
   
@@ -21,7 +14,7 @@ plot_umap_embedding_clusters <- function(geom_df, organism) {
       y = "UMAP2"
     )
   
-  umap_plot_path <- glue("results/clusters/umap/{organism}_umap.svg")
+  umap_plot_path <- glue("results/clusters/umap/{organism}_umap_2.svg")
   svg(umap_plot_path, width = 8, height = 6)
   print(plt)
   dev.off()
@@ -36,6 +29,10 @@ cluster_proteins_by_geometry <- function(organism) {
   # without stable cores. UMAP requires all features to contain no NA values.
   geom_path <- SPECIES$geom_path[match(organism, SPECIES$common_name)]
   geom_df <- read_csv(geom_path, show_col_types = FALSE) |> drop_na()
+  
+  geom_df <- geom_df |>
+    select(-length_ratio, -rg_ratio, -eccentricity_ratio, -kurtosis_ratio,
+           -coeff_var_ratio)
   
   # Get UMAP embeddings
   set.seed(524)
@@ -64,7 +61,7 @@ cluster_proteins_by_geometry <- function(organism) {
     group_by(cluster) |> 
     summarise(
       across(
-        high_pLDDT:kurtosis_ratio,
+        high_pLDDT:coeff_var_hc, # prev :kurtosis_ratio
         list(
           mean = mean,
           min = min,
@@ -74,13 +71,10 @@ cluster_proteins_by_geometry <- function(organism) {
         .names = "{.col}_{.fn}"
       )
     )
-  write_csv(cluster_summary_df, glue("results/clusters/{organism}_cluster_summary.csv"))
+  write_csv(cluster_summary_df, glue("results/clusters/{organism}_cluster_summary_2.csv"))
   
   # Create UMAP embedding plot
   plot_umap_embedding_clusters(geom_df, organism)
-  
-  # Visualise feature distributions of each cluster side-by-side
-  plot_cluster_feature_distr_within_organism(organism)
   
   # Write dataframe with UMAP embeddings and cluster IDs
   outpath <- SPECIES$clusters_path[match(organism, SPECIES$common_name)]

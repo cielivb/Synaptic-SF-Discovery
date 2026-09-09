@@ -33,8 +33,8 @@ log_info("Clustering proteins by geometry ...")
 done <- parLapplyLB(CLUSTER, SPECIES$common_name, cluster_proteins_by_geometry)
 
 # Discover geometrically similar clusters across species
-
-# TP: visualise geometrically similar clusters
+log_info("Discovering similar clusters across species ...")
+discover_similar_clusters_across_species()
 
 # Calculate functional enrichment for each cluster
 
