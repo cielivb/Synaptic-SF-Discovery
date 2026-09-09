@@ -114,7 +114,6 @@ clusterEvalQ(CLUSTER, {
   library(glue)
   library(gridExtra)
   library(httr2)
-  library(igraph)
   library(jsonlite)
   library(logger)
   library(parallel)

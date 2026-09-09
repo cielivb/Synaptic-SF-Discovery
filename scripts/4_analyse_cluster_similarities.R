@@ -56,30 +56,6 @@ pairwise_permanova <- function(df) {
 }
 
 
-# "Cluster" similar clusters by finding connected components of a graph
-# where nodes are cluster labels and edges represent being similar (i.e.,
-# not being statistically different / alpha >= 0.05)
-cluster_similar_clusters <- function(name, pw_permanova_results) {
-  alpha <- 0.05
-  
-  # Create adjacency list where edges are similar clusters
-  similar_pairs <- pw_permanova_results |> 
-    filter(pval_adj >= alpha) |> select(cluster_1, cluster_2)
-  
-  # Find connected components ("groups" / clusters of clusters)
-  graph <- graph_from_data_frame(similar_pairs, directed = FALSE)
-  groups <- components(graph)$membership
-  groups_tbl <- tibble(cluster = names(groups), group = groups)
-  
-  # Plot similarity graph
-  svg("results/clusters/similarity/{name}_similarity_graph.svg")
-  plot(g_sub, vertex.size = 30, vertex.label.cex = 0.8)
-  dev.off()
-  
-  return(groups_tbl)
-}
-
-
 discover_similar_clusters_across_species <- function() {
   
   # Read in each species' geometry + cluster dataframes and scale features
@@ -114,23 +90,17 @@ discover_similar_clusters_across_species <- function() {
     mutate(pval_adj = p.adjust(`Pr(>F)`, method = "BH"))
   pw_permanova_results_sub <- raw_pw_permanova_results_sub |>
     mutate(pval_adj = p.adjust(`Pr(>F)`, method = "BH"))
-  write_csv(
-    pw_permanova_results_full, 
-    "results/clusters/similarity/pw_permanova_full.csv"
-  )
-  write_csv(
-    pw_permanova_results_sub, 
-    "results/clusters/similarity/pw_permanova_subset.csv"
-  )
+  pw_permanova_full_path <- "results/clusters/similarity/pw_permanova_full.csv"
+  pw_permanova_subset_path <- "results/clusters/similarity/pw_permanova_subset.csv"
+  write_csv(pw_permanova_results_full, pw_permanova_full_path)
+  write_csv(pw_permanova_results_sub, pw_permanova_subset_path)
   
   # Identify similar clusters (those that are not statistically significantly 
-  # different after multiple testing)
-  sim_clusters_full <- cluster_similar_clusters("full", pw_permanova_results_full)
-  sim_clusters_sub <- cluster_similar_clusters("subset", pw_permanova_results_sub)
-  write_csv(sim_clusters_full, "results/clusters/similarity/full_similar_clusters.csv")
-  write_csv(sim_clusters_sub, "results/clusters/similarity/subset_similar_clusters.csv")
+  # different after multiple testing) and visualise 
+  system(glue("scripts/find_similar_clusters.py {pw_permanova_full_path}"))
+  system(glue("scripts/find_similar_clusters.py {pw_permanova_subset_path}"))
   
-  # Visualise results with panelled radar plots
+  # Visualise results with parallel coordinates chart
   
   log_info("Discovered similar clusters across species")
 }
