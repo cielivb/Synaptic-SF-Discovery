@@ -3,9 +3,8 @@
 # must be patient and download files sequentially.
 
 source("scripts/setup.R")
-configure_logger("logs/download.log")
+configure_logger("logs/0_download.log")
 
-library(readr)
 library(httr2)
 
 log_info("Downloading multi-GB dataset - this will take a while")

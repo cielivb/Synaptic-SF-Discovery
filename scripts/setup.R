@@ -19,9 +19,11 @@ renv::restore(lockfile = "renv.lock", clean = TRUE, prompt = FALSE)
 
 # Load packages used in most scripts
 library(dplyr)
+library(future)
 library(future.apply)
 library(glue)
 library(logger)
+library(readr)
 
 
 
