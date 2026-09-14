@@ -1,4 +1,4 @@
-name: Human-NT-Receptor-Geometry-by-Synapse-Type-Env
+name: Synaptic-SF-Env
 channels:
   - conda-forge
 dependencies:

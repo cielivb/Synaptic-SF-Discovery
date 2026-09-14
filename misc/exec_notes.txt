@@ -1,0 +1,15 @@
+./BUILD_ENV.sh
+
+conda activate Synaptic-SF-Env
+
+Rscript scripts/download.R
+
+sbatch scripts/filter_by_func.sbatch
+
+sbatch scripts/extract_shapes.sbatch
+
+sbatch scripts/cluster_shapes.sbatch
+
+sbatch scripts/enrich_shapes_by_func.sbatch
+
+conda deactivate
