@@ -10,8 +10,6 @@ library(uwot)
 library(dbscan)
 
 
-
-
 plot_features_species_violin <- function(df, title) {
   
   # Rotate df to get df with taxon, feature, and value columns
@@ -38,8 +36,6 @@ plot_features_species_violin <- function(df, title) {
 }
 
 
-
-
 dir.create(
   "results/3_cluster_proteins_by_shape", showWarnings = FALSE, recursive = TRUE
 )
@@ -62,7 +58,8 @@ plot_features_species_violin(geom_df_f, "Feature Set 1 Distributions by Taxa (Ra
 plot_features_species_violin(geom_df_hc, "Feature Set 2 Distributions by Taxa (Raw)")
 plot_features_species_violin(geom_df_misc, "Feature Set 3 Distributions by Taxa (Raw)")
 
-# Correct for skewness in candidate features within taxa, then visualise.
+
+# Correct for skewness in candidate features across taxa, then visualise.
 # kurtosis_f, length_f, rg_f, kurtosis_hc, length_hc, rg_hc
 no_skew_f <- geom_df_f |> 
   mutate(log_kurtosis_f = log(kurtosis_f),
@@ -82,32 +79,57 @@ plot_features_species_violin(
 plot_features_species_violin(
   no_skew_misc, "Feature Set 3 Distributions by Taxa (Skew-Corrected)")
 
-# Scale feature distributions within taxa, then visualise
-# Use MAD and median to stay robust against outliers
 
-mad_scale <- function(v) {
-  (v - median(v)) / mad(v)
-}
-
-scaled_f <- no_skew_f |> group_by(taxon) |>
+# Scale feature distributions ACROSS taxa, then visualise.
+# Use median-MAD-standardisation on unbounded geometric features to normalise
+# variance while staying robust against outliers, then bound feature ranges
+# between 0 and 1 via min-max normalisation so they are treated with equal 
+# importance in later UMAP.
+mad_scale <- function(v) {(v - median(v)) / mad(v)}
+min_max_norm <- function(v) {(v - min(v)) / (max(v) - min(v))}
+scaled_f <- no_skew_f |>
   mutate( # TODO
-    log_kurtosis_f = mad_scale(log_kurtosis_f)
-  ) |> ungroup()
-scaled_hc <- no_skew_hc |> group_by(taxon) |>
-  mutate( # TODO
-    ) |> ungroup()
-scaled_misc <- no_skew_misc
+    scaled_coeff_var_f = min_max_norm(mad_scale(coeff_var_f)),
+    # eccentricity_f already bounded between 0 and 1
+    scaled_log_kurtosis_f = min_max_norm(mad_scale(log_kurtosis_f)),
+    scaled_log_length_f = min_max_norm(mad_scale(log_length_f)),
+    scaled_log_rg_f = min_max_norm(mad_scale(log_rg_f))
+  ) |> 
+  select(-coeff_var_f, -log_kurtosis_f, -log_length_f, -log_rg_f) |> 
+  ungroup()
+scaled_hc <- no_skew_hc |>
+  mutate(
+    scaled_coeff_var_hc = min_max_norm(mad_scale(coeff_var_hc)),
+    # eccentricity_hc already bounded between 0 and 1
+    scaled_log_kurtosis_hc = min_max_norm(mad_scale(log_kurtosis_hc)),
+    scaled_log_length_hc = min_max_norm(mad_scale(log_length_hc)),
+    scaled_log_rg_hc = min_max_norm(mad_scale(log_rg_hc))
+  ) |> 
+  select(-coeff_var_hc, -log_kurtosis_hc, -log_length_hc, -log_rg_hc) |>
+  ungroup()
+scaled_misc <- no_skew_misc # pLDDT fractions already between 0 and 1
 plot_features_species_violin(
-  scaled_f, "Feature Set 1 Distributions by Taxa (Skew-Corrected, MAD-Scaled)")
+  scaled_f, "Feature Set 1 Distributions by Taxa (Skew-Corrected & Scaled)")
 plot_features_species_violin(
-  scaled_hc, "Feature Set 2 Distributions by Taxa (Skew-Corrected, MAD-Scaled")
+  scaled_hc, "Feature Set 2 Distributions by Taxa (Skew-Corrected & Scaled")
 plot_features_species_violin(
-  scaled_misc, "Feature Set 3 Distributions by Taxa (Skew-Corrected, MAD-Scaled")
+  scaled_misc, "Feature Set 3 Distributions by Taxa (Skew-Corrected & Scaled")
 
 
-# Run per-taxon PCA on descriptor matrices per species to find variances per 
-# feature, then filter out features with consistently low variance across species
+# Run PCA on full geometric description dataframe to find variances per 
+# feature, then filter out low variance features
 # TODO
+scaled_hc <- scaled_hc |> select(-taxon) # taxon column already in scaled_f
+scaled_misc <- scaled_misc |> select(-taxon)
+geom_df <- bind_cols(scaled_f, scaled_hc, scaled_misc)
+geom_pca_df <- geom_df |> select(where(is.numeric))
+# Manual centering and scaling already done above
+pca <- prcomp(geom_pca_df, center = FALSE, scale. = FALSE)
+summary(pca)
+
+
+
+# Create correlation matrix and filter features to reduce redundancy
 
 
 # Use 1 worker per taxon, or if less than 6 cores available, just use one
