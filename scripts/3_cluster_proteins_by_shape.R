@@ -3,7 +3,11 @@
 source("scripts/setup.R")
 configure_logger("logs/3_cluster_proteins_by_shape.log")
 
+library(GGally)
+library(ggplot2)
 library(tidyr)
+library(uwot)
+library(dbscan)
 
 
 
@@ -36,9 +40,13 @@ plot_features_species_violin <- function(df, title) {
 
 
 
+dir.create(
+  "results/3_cluster_proteins_by_shape", showWarnings = FALSE, recursive = TRUE
+)
+
 # Read in geometry descriptions for each taxon
 taxa <- c("fly","human","mouse","rat","worm","zebrafish")
-geom_df <- rbind(lapply(taxa, function (taxon) {
+geom_df <- bind_rows(lapply(taxa, function (taxon) {
   geom_file <- glue("results/2_extract_shape_data/{taxon}_geom.csv")
   taxon_df <- read_csv(geom_file, show_col_types = FALSE) |>
     mutate(taxon = taxon)
@@ -49,7 +57,8 @@ geom_df <- rbind(lapply(taxa, function (taxon) {
 # Visualise feature distributions before corrections
 geom_df_f <- geom_df |> select(taxon, ends_with("_f"))
 geom_df_hc <- geom_df |> select(taxon, ends_with("_hc"))
-geom_df_misc <- geom_df |> select(taxon, -ends_with("_f"), -ends_with("_hc"))
+geom_df_misc <- geom_df |> select(-ends_with("_f"), -ends_with("_hc"))
+print(names(geom_df_misc))
 plot_features_species_violin(geom_df_f, "Feature Set 1 Distributions by Taxa (Raw)")
 plot_features_species_violin(geom_df_hc, "Feature Set 2 Distributions by Taxa (Raw)")
 plot_features_species_violin(geom_df_misc, "Feature Set 3 Distributions by Taxa (Raw)")
@@ -71,7 +80,7 @@ available_cores <- parallel::detectCores(logical = FALSE)
 plan(multisession, workers = min(available_cores, 6))
 
 # Find within-taxa shape clusters
-future_lapply(taxa, function (taxon) {
+future_lapply(taxa, future.seed = TRUE, FUN = function (taxon) {
   
   # Create UMAP embedding
   set.seed(254)

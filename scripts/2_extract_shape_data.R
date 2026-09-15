@@ -2,7 +2,8 @@
 
 
 source("scripts/setup.R")
-configure_logger("logs/extract_shape_data.log")
+log_file = "logs/2_extract_shape_data.log"
+configure_logger(log_file)
 
 library(R.utils) # unzip gzipped files
 
@@ -34,7 +35,7 @@ extract_atom_site_data <- function(taxon, afdb_taxon_tar, atom_site_csv_dir) {
   
   # Extract atom site data for each synaptic protein in each species
   dir.create(atom_site_csv_dir, showWarnings = FALSE)
-  system("scripts/extract_atom_sites.sh {extract_pdb_dir} {atom_site_csv_dir}")
+  system(glue("scripts/extract_atom_sites.sh {extract_pdb_dir} {atom_site_csv_dir}"))
 }
 
 
@@ -155,8 +156,8 @@ afdb_taxon_meta <- download_meta |> filter(category == "afdb_taxon")
 
 # Extract shape data for each taxon in parallel
 log_info("Extracting shape data for each taxon ...")
-future_lapply(afdb_taxon_meta$dest, function (afdb_taxon_tar) {
-  
+done <- future_lapply(afdb_taxon_meta$destination, function (afdb_taxon_tar) {
+  configure_logger(log_file, worker = TRUE)
   
   taxon <- sub("\\.tar$", "", basename(afdb_taxon_tar)) # e.g., worm
   geom_file <- glue("results/2_extract_shape_data/{taxon}_geom.csv")
