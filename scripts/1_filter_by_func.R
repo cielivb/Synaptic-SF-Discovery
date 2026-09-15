@@ -17,6 +17,7 @@ library(tidyr)
 
 dir.create("results/1_filter_by_func", showWarnings = FALSE, recursive = TRUE)
 
+
 # Load and clean GO Slim Synapse
 log_info("Cleaning GO Slim Synapse data ...")
 goslim_synapse <- read_tsv(
@@ -28,18 +29,16 @@ goslim_synapse <- read_tsv(
 write_csv(goslim_synapse, "results/1_filter_by_func/goslim_synapse_go_ids.csv")
 
 
-# Map GO IDs to ancestor GO IDs
-log_info("Mapping GO IDs to ancestor GO IDs ...")
-system("python scripts/map_go_ancestors.py")
-ancestors <- fromJSON("results/1_filter_by_func/go_ancestors.json")
+# Map synaptic GO IDs to ancestor GO IDs
+log_info("Mapping synaptic GO IDs to ancestor GO IDs ...")
+system("python scripts/map_synaptic_go_ancestors.py")
+ancestors <- fromJSON("results/1_filter_by_func/synaptic_go_ancestors.json")
 ancestor_df <- tibble::enframe( # unpack named list ancestors into tibble
   ancestors, name = "go_id", value = "ancestor_ids"
 )
 ancestor_df$ancestor_ids <- lapply(ancestor_df$ancestor_ids, function(x) {
     if (is.null(x)) {character()} else if (is.list(x)) {unlist(x)} else {x}
 })
-
-ancestor_df <- ancestor_df |> unnest(ancestor_ids)
 
 
 # Use 1 worker per taxon, or if less than 6 cores available, just use one
@@ -55,52 +54,39 @@ download_meta <- read_csv("data/downloads.csv", show_col_types = FALSE)
 go_taxon_meta <- download_meta |> filter(category == "go_taxon")
 log_info("Filtering each taxon's proteins ...")
 done <- future_lapply(go_taxon_meta$destination, function (go_taxon_file) {
-  configure_logger(log_file)
+  configure_logger(log_file, worker = TRUE)
   
   taxon <- sub("\\.gaf.gz$", "", basename(go_taxon_file)) # e.g., worm
   dest <- glue("results/1_filter_by_func/{taxon}.csv")
   dest_uniprot_only <- glue("results/1_filter_by_func/{taxon}_uniprot_only.csv")
   
   # Read in taxon annotations
-  all_ann <- read_tsv(
+  ann <- read_tsv(
     go_taxon_file, comment = "!", col_names = FALSE,
     col_types = cols_only(
       X2 = col_character(), # UniProt accession
       X5 = col_character() # GO ID
     ),
     show_col_types = FALSE)
-  names(all_ann) <- c("uniprot", "go_id")
+  names(ann) <- c("uniprot", "go_id")
   
-  # Keep only those proteins with at least one GO ID in GO Slim Synapse
-  synapse_ann <- all_ann |>
-    group_by(uniprot) |>
-    filter(any(!is.na(match(go_id, goslim_synapse$go_id)))) |>
-    ungroup()
-  num_proteins <- synapse_ann |> distinct(uniprot) |> nrow()
-  log_info(glue("{taxon}: {nrow(synapse_ann)} annotations & {num_proteins} proteins after first filter"))
+  # Expand annotations to include ancestors
+  anc_ann <- ann |>
+    left_join(ancestor_df, by = "go_id") |>
+    select(-go_id) |>
+    unnest(ancestor_ids) |>
+    rename(go_id = ancestor_ids)
+  all_ann <- bind_rows(anc_ann, ann) |> arrange(uniprot, go_id)
   
-  # Merge ancestor GO IDs into synapse_ann df -> (uniprot, go_id, ancestor_ids)
-  synapse_ann <- synapse_ann |> 
-    left_join(ancestor_df, by = "go_id", relationship = "many-to-many")
-  
-  # Derive df with one entry per UniProt-GO ID relationship
-  synaptic_ann_rows <- synapse_ann |>
-    mutate(ancestor_ids = go_id, .keep = "none")
-  ancestor_rows <- synapse_ann |> select(uniprot, ancestor_ids)
-  synapse_ann <- bind_rows(ancestor_rows, synaptic_ann_rows) |>
-    rename(go_id = ancestor_ids) |> distinct()
-  
-  
-  # Filter synapse_ann again to include only annotations involving those 
-  # proteins with both the chemical synaptic transmission GO ID and the 
-  # neuron-to-neuron synapse GO ID
+  # Include only annotations involving those proteins with both the chemical 
+  # synaptic transmission GO ID and the neuron-to-neuron synapse GO ID
   chemsyn_go <- "GO:0007268"
   nn_go <- "GO:0098984"
-  filtered_proteins <- synapse_ann |> group_by(uniprot) |>
+  synaptic_proteins <- all_ann |> group_by(uniprot) |>
     filter(any(go_id == chemsyn_go) & any(go_id == nn_go)) |> distinct(uniprot)
-  filtered_ann <- semi_join(synapse_ann, filtered_proteins, by = "uniprot")
+  filtered_ann <- semi_join(all_ann, synaptic_proteins, by = "uniprot")
   num_proteins <- filtered_ann |> distinct(uniprot) |> nrow()
-  log_info(glue("{taxon}: {nrow(filtered_ann)} annotations & {num_proteins} proteins after second filter"))
+  log_info(glue("{taxon}: {nrow(filtered_ann)} annotations & {num_proteins} proteins after filter"))
   
   # Export filtered synaptic protein annotation data
   write_csv(filtered_ann, dest, col_names = TRUE)

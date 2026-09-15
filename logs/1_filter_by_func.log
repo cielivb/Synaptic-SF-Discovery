@@ -1,5 +1,16 @@
-INFO [2026-09-15 23:05:00] worm: 7748 annotations & 375 proteins after first filter
-INFO [2026-09-15 23:05:00] zebrafish: 124184 annotations & 9 proteins after second filter
-INFO [2026-09-15 23:05:01] Filtered zebrafish proteins
-INFO [2026-09-15 23:05:06] worm: 14115 annotations & 5 proteins after second filter
-INFO [2026-09-15 23:05:07] Filtered worm proteins
+INFO [2026-09-16 00:01:01] Cleaning GO Slim Synapse data ...
+INFO [2026-09-16 00:01:01] Mapping synaptic GO IDs to ancestor GO IDs ...
+INFO [2026-09-16 00:01:08] Filtering each taxon's proteins ...
+INFO [2026-09-16 00:01:12] fly: 26010 annotations & 52 proteins after filter
+INFO [2026-09-16 00:01:12] Filtered fly proteins
+INFO [2026-09-16 00:01:13] worm: 14122 annotations & 31 proteins after filter
+INFO [2026-09-16 00:01:14] Filtered worm proteins
+INFO [2026-09-16 00:01:14] zebrafish: 20664 annotations & 50 proteins after filter
+INFO [2026-09-16 00:01:14] Filtered zebrafish proteins
+INFO [2026-09-16 00:01:15] rat: 61584 annotations & 78 proteins after filter
+INFO [2026-09-16 00:01:15] Filtered rat proteins
+INFO [2026-09-16 00:01:16] human: 72942 annotations & 133 proteins after filter
+INFO [2026-09-16 00:01:16] mouse: 68751 annotations & 78 proteins after filter
+INFO [2026-09-16 00:01:16] Filtered human proteins
+INFO [2026-09-16 00:01:16] Filtered mouse proteins
+INFO [2026-09-16 00:01:16] Protein filtration script done

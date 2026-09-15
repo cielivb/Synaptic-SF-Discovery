@@ -32,8 +32,8 @@ options(dplyr.summarise.inform = FALSE)
 
 ### CONFIGURE LOGGER -----------------------------------------------------------
 
-configure_logger <- function(logfile) {
-  if (file.exists(logfile)) {
+configure_logger <- function(logfile, worker=FALSE) {
+  if (file.exists(logfile) & !worker) {
     file.remove(logfile)
   }
   log_appender(appender_console)
