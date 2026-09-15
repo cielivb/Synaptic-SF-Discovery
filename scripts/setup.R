@@ -36,3 +36,12 @@ configure_logger <- function(logfile) {
   log_appender(appender_console)
   log_appender(appender_file(logfile), index = 2)
 }
+
+
+
+### OTHER UTILITY FUNCTIONS ---------------------------------------------------
+
+clean_string <- function(s) {
+  cleaned <- gsub(" ", "_", x) |> gsub("[[:punct:]]", "", _) |> tolower()
+  return(cleaned)
+}
