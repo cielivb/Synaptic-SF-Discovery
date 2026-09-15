@@ -1,0 +1,5 @@
+INFO [2026-09-15 23:05:00] worm: 7748 annotations & 375 proteins after first filter
+INFO [2026-09-15 23:05:00] zebrafish: 124184 annotations & 9 proteins after second filter
+INFO [2026-09-15 23:05:01] Filtered zebrafish proteins
+INFO [2026-09-15 23:05:06] worm: 14115 annotations & 5 proteins after second filter
+INFO [2026-09-15 23:05:07] Filtered worm proteins

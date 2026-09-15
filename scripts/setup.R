@@ -25,6 +25,9 @@ library(glue)
 library(logger)
 library(readr)
 
+options(dplyr.summarise.inform = FALSE)
+
+
 
 
 ### CONFIGURE LOGGER -----------------------------------------------------------
@@ -42,6 +45,7 @@ configure_logger <- function(logfile) {
 ### OTHER UTILITY FUNCTIONS ---------------------------------------------------
 
 clean_string <- function(s) {
-  cleaned <- gsub(" ", "_", x) |> gsub("[[:punct:]]", "", _) |> tolower()
+  cleaned <- s |> gsub(" ", "_", x=_) |> 
+    gsub("[[:punct:]]", "", x=_) |> tolower()
   return(cleaned)
 }

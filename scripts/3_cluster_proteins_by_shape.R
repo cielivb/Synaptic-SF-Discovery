@@ -54,15 +54,44 @@ plot_features_species_violin(geom_df_f, "Feature Set 1 Distributions by Taxa (Ra
 plot_features_species_violin(geom_df_hc, "Feature Set 2 Distributions by Taxa (Raw)")
 plot_features_species_violin(geom_df_misc, "Feature Set 3 Distributions by Taxa (Raw)")
 
-# Correct for skewness in candidate features, then visualise
-# correct here!
+# Correct for skewness in candidate features within taxa, then visualise
+# TODO
+
+# Scale feature distributions within taxa, then visualise
+# TODO
+
+# Run per-taxon PCA on descriptor matrices per species to find variances per 
+# feature, then filter out features with consistently low variance across species
+# TODO
 
 
-# Normalise feature distributions, then visualise
+# Use 1 worker per taxon, or if less than 6 cores available, just use one
+# worker per core
+available_cores <- parallel::detectCores(logical = FALSE)
+plan(multisession, workers = min(available_cores, 6))
+
+# Find within-taxa shape clusters
+future_lapply(taxa, function (taxon) {
+  
+  # Create UMAP embedding
+  set.seed(254)
+  features <-  # TODO
+  umap_embedding <- umap(
+    features,
+    n_neighbours = 50,
+    min_dist = 0.1,
+    n_components = 2,
+    metric = "euclidean",
+    init = "pca"
+  )
+  features$UMAP1 <- umap_embedding[,1]
+  features$UMAP2 <- umap_embedding[,2]
+  
+  # Run HDBSCAN on UMAP embedding to discover clusters
+  hdb <- hdbscan(umap_embedding, minPts = 10)
+
+})
 
 
-# Run PCA on descriptor matrices per species to find variance per feature,
-# and filter out features with low variance across species
 
 
-# Create UMAP embeddings
