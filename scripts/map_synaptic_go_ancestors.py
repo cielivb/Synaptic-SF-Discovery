@@ -1,7 +1,9 @@
-from pathlib import Path
-import networkx as nx
+""" Map each synaptic GO ID to its ancestor GO IDs, and write metadata """
+
 import json
+import networkx as nx
 import pandas as pd
+from pathlib import Path
 
 
 def extract_go(uri):
