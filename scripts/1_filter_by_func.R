@@ -16,6 +16,7 @@ library(tidyr)
 
 
 # Load and clean GO Slim Synapse
+log_info("Cleaning GO Slim Synapse data ...")
 goslim_synapse <- read_tsv(
   "data/goslim_synapse.tsv", col_names = TRUE, show_col_types = FALSE
 ) |>
@@ -26,6 +27,7 @@ write_csv(goslim_synapse, "results/1_filter_by_func/goslim_synapse_go_ids.csv")
 
 
 # Map GO Slim Synapse GO IDs to ancestor GO IDs
+log_info("Mapping GO Slim Synapse GO IDs to their ancestor GO IDs ...")
 system("python scripts/map_synaptic_go_ancestors.py")
 ancestors <- fromJSON("results/1_filter_by_func/synaptic_go_ancestors.json")
 ancestor_df <- enframe( # unpack named list ancestors into tibble
@@ -43,12 +45,13 @@ plan(multisession, workers = min(available_cores, 6))
 
 # Filter proteins by function for each taxon in parallel
 download_meta <- read_csv("data/downloads.csv", show_col_types = FALSE)
-go_taxon_meta <- download_meta |> select(category = "go_taxon")
+go_taxon_meta <- download_meta |> filter(category == "go_taxon")
+log_info("Filtering each taxon's proteins ...")
 future_lapply(go_taxon_meta$dest, function (go_taxon_file) {
   
   taxon <- sub(".gaf.gz", "", basename(go_taxon_file)) # e.g., worm
   dest <- glue("results/1_filter_by_func/{taxon}.csv")
-  
+  dest_uniprot_only <- glue("results/1_filter_by_func/{taxon}_uniprot_only.csv")
   
   # Read in taxon annotations
   all_ann <- read_tsv(
@@ -87,5 +90,9 @@ future_lapply(go_taxon_meta$dest, function (go_taxon_file) {
   
   # Export filtered synaptic protein annotation data
   write_csv(filtered, dest, col_names = TRUE)
-  
+  write_csv(filtered |> distinct(uniprot), dest_uniprot_only, col_names = TRUE)
+  log_info(glue("Filtered {taxon} proteins"))
+
 })
+
+log_info("Protein filtration script done")
