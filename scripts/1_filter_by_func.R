@@ -49,7 +49,7 @@ go_taxon_meta <- download_meta |> filter(category == "go_taxon")
 log_info("Filtering each taxon's proteins ...")
 future_lapply(go_taxon_meta$dest, function (go_taxon_file) {
   
-  taxon <- sub(".gaf.gz", "", basename(go_taxon_file)) # e.g., worm
+  taxon <- sub("\\.gaf.gz$", "", basename(go_taxon_file)) # e.g., worm
   dest <- glue("results/1_filter_by_func/{taxon}.csv")
   dest_uniprot_only <- glue("results/1_filter_by_func/{taxon}_uniprot_only.csv")
   
