@@ -1,4 +1,22 @@
-# Cluster protein shapes within taxa, then detect similar clusters across taxa.
+# (Attempt to) Cluster protein shapes within taxa.
+
+# "Do synaptic proteins across taxa form discrete geometric clusters in 
+# geometric feature space?"
+
+# Results: no meaningful geometric clusters could be found. The manifold appears
+# continous across species, and many proteins consistently fall into cluster 0
+# ("noise"), and the majority of proteins have lower membership probabilities
+# in their assigned clusters. Silhouette analysis (for taxa with more than 1
+# assigned cluster) also yields average silhouette widths between 0.05 and 0.24
+# indicating poor cluster assignment. These results were taken from using 
+# minPts = 5 in both hdbscan calls. It seems unlikely that adjusting parameters
+# of either UMAP or HDBSCAN will alter these results. Therefore, I will conclude
+# that I could not detect clear and meaningful cluster structure in geometric 
+# feature space.
+
+# Interesting tangents:
+# - Would this be true for other protein sets beyond synaptic proteins?
+
 
 source("scripts/setup.R")
 log_file <- "logs/4_cluster_shapes.log"
