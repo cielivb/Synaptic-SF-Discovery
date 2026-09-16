@@ -26,6 +26,7 @@ library(logger)
 library(readr)
 
 options(dplyr.summarise.inform = FALSE)
+#options(future.options = list(graphics.dev = NULL))
 
 
 

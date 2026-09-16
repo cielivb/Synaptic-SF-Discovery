@@ -20,7 +20,10 @@ dir.create("results/4_cluster_shapes", showWarnings = FALSE)
 # Plot UMAP embedding, colouring points by clusters
 plot_umap_embedding_clusters <- function(geom_df, taxon) {
   
-  plt <- ggplot(geom_df, aes(x = UMAP1, y = UMAP2, color = factor(cluster))) +
+  umap_plot_path <- glue("results/4_cluster_shapes/umap_{taxon}.svg")
+  svg(umap_plot_path, width = 8, height = 6)
+  
+  plt <- ggplot(geom_df, aes(x = UMAP1, y = UMAP2, color = factor(umap_cluster))) +
     geom_point(alpha = 0.7, size = 1.5) +
     scale_color_discrete(name = "Cluster") +
     theme_minimal(base_size = 14) +
@@ -29,8 +32,6 @@ plot_umap_embedding_clusters <- function(geom_df, taxon) {
       x = "UMAP1", y = "UMAP2"
     )
   
-  umap_plot_path <- glue("results/4_cluster_shapes/umap_{taxon}.svg")
-  svg(umap_plot_path, width = 8, height = 6)
   print(plt)
   invisible(dev.off())
   
@@ -54,9 +55,11 @@ taxa <- c("fly","human","mouse","rat","worm","zebrafish")
 clustered <- future_lapply(taxa, future.seed = TRUE, FUN = function (taxon) {
   
   configure_logger(log_file, worker = TRUE)
+  while (dev.cur() > 1) dev.off()
+  set.seed(254)
   taxon_geom <- geom_df |> filter(taxon == !!taxon)
   log_info(glue("Clustering {nrow(taxon_geom)} {taxon} proteins ..."))
-  set.seed(254)
+  
   
   # Create UMAP embedding
   features <- taxon_geom |> select(starts_with("scaled_"))
@@ -81,49 +84,61 @@ clustered <- future_lapply(taxa, future.seed = TRUE, FUN = function (taxon) {
   
   # Run HDBSCAN on the scaled features themselves (skipping UMAP - HDBSCAN-only)
   hdb <- hdbscan(features, minPts = 5)
-  taxon_geom$cluster <- hdb$cluster # cluster 0 = noise
+  taxon_geom$cluster <- as.factor(hdb$cluster) # cluster 0 = noise
   taxon_geom$cluster_prob <- hdb$membership_prob
   
   # Visualise HDBSCAN-only clusters on scaled features
+  outfile <- glue("results/4_cluster_shapes/hdbscan_clusters_on_features_{taxon}.svg")
+  svg(outfile, width = 12, height = 12)
   plt <- ggpairs(
     taxon_geom, columns = colnames(features), aes(color = cluster)) +
     labs(title = glue("Feature Distributions with HDBSCAN Clusters ({taxon})"))
-  outfile <- glue("results/4_cluster_shapes/features_clusters_{taxon}.svg")
-  svg(outfile, width = 12, height = 12)
   print(plt)
   invisible(dev.off())
   
   # Visualise HDBSCAN-only cluster probabilities
+  outfile <- glue("results/4_cluster_shapes/hdbscan_cluster_probs_{taxon}.svg")
+  svg(outfile, width = 12, height = 12)
   plt <- ggplot(taxon_geom, aes(cluster_prob, fill = cluster)) +
     geom_histogram(binwidth = 0.05) +
     labs(title = glue("HDBSCAN Cluster Probabilities ({taxon})"))
-  
-  # Get and visualise HDBSCAN-only cluster silhouette scores
-  distance_matrix <- dist(features, method = "euclidean")
-  sil <- silhouette(taxon_geom$cluster, distance_matrix)
-  sink(glue("results/4_cluster_shapes/silhouette_summary_{taxon}.txt"))
-  summary(sil)
-  sink()
-  plt <- plot(sil, col = taxon_geom$cluster)
-  outfile <- glue("results/4_cluster_shapes/silhouette_{taxon}.svg")
-  svg(outfile, width = 12, height = 12)
   print(plt)
   invisible(dev.off())
   
+  # Get and visualise HDBSCAN-only cluster silhouette scores
+  if (length(unique(as.integer(taxon_geom$cluster))) > 1) {
+    distance_matrix <- dist(features, method = "euclidean")
+    sink(glue("results/4_cluster_shapes/silhouette_summary_{taxon}.txt"))
+    sil <- silhouette(as.integer(taxon_geom$cluster), distance_matrix)
+    print(summary(sil))
+    sink()
+    outfile <- glue("results/4_cluster_shapes/hdbscan_silhouette_{taxon}.svg")
+    svg(outfile, width = 12, height = 12)
+    plot(sil, col = taxon_geom$cluster)
+    invisible(dev.off())
+  } else {
+    log_info(glue("Skipping silhouette for {taxon}: only 1 cluster"))
+  }
+  
   # Project HDBSCAN-only clusters onto UMAP for visualisation
-  umap_df <- as.data.frame(umap_embedding$layout)
+  umap_df <- as.data.frame(umap_embedding)
   colnames(umap_df) <- c("UMAP1", "UMAP2")
   proj_df <- bind_cols(umap_df, taxon_geom["cluster"])
+  outfile <- glue("results/4_cluster_shapes/hdbscan_umap_proj_{taxon}.svg")
+  svg(outfile, width = 12, height = 12)
   plt <- ggplot(proj_df, aes(UMAP1, UMAP2, color = factor(cluster))) +
     geom_point(size = 1.5, alpha = 0.8) +
-   # scale_color_brewer(palette = "Set1") +
+    # scale_color_brewer(palette = "Set1") +
     theme_minimal() +
     labs(
-      title = glue("UMAP-Projected HDBSCAN-Only Clusters ({taxon})")
+      title = glue("UMAP-Projected HDBSCAN-Only Clusters ({taxon})"),
       color = "Cluster"
     )
+  print(plt)
+  invisible(dev.off())
   
   log_info(glue("Computed {taxon} clusters"))
+  while (dev.cur() > 1) dev.off()
   return(taxon_geom)
   
 })
