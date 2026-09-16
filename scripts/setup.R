@@ -47,7 +47,7 @@ configure_logger <- function(logfile, worker=FALSE) {
 clean_string <- function(s) {
   cleaned <- s |>
     gsub(" ", "_", x = _) |> 
-    gsub("[[:punct:]&&[^_]]", "", x = _) |> 
+    gsub("[\\%()&#:/.,-]", "", x = _) |> 
     tolower()
   return(cleaned)
 }
