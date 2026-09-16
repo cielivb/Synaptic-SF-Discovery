@@ -84,7 +84,8 @@ done <- future_lapply(go_taxon_meta$destination, function (go_taxon_file) {
   nn_go <- "GO:0098984"
   synaptic_proteins <- all_ann |> group_by(uniprot) |>
     filter(any(go_id == chemsyn_go) & any(go_id == nn_go)) |> distinct(uniprot)
-  filtered_ann <- semi_join(all_ann, synaptic_proteins, by = "uniprot")
+  filtered_ann <- semi_join(all_ann, synaptic_proteins, by = "uniprot") |> 
+    distinct(uniprot, go_id)
   num_proteins <- filtered_ann |> distinct(uniprot) |> nrow()
   log_info(glue("{taxon}: {nrow(filtered_ann)} annotations & {num_proteins} proteins after filter"))
   

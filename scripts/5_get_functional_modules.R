@@ -11,6 +11,9 @@ configure_logger(log_file)
 library(tidyr)
 
 
+dir.create("results/5_get_functional_modules", showWarnings = FALSE)
+
+
 # Read in shape data (taxon, uniprot, geom-etc)
 taxa <- c("fly", "human", "mouse", "rat", "worm", "zebrafish")
 shape_df <- read_csv(
@@ -32,7 +35,7 @@ go_presence_matrix <- function_df |>
     id_cols = uniprot, # keep
     names_from = go_id, # each go_id value becomes a column
     values_from = value,
-    values_fill = 0L # absent in protein
+    values_fill = list(value = 0L) # absent in protein
   )
 
 
@@ -42,22 +45,25 @@ prevalence <- go_presence_matrix |> select(-uniprot) |>
   summarise(across(everything(), ~ mean(.x))) |> # get presence proportion
   pivot_longer(everything(), names_to = "go_id", values_to = "p") # go_id, p cols
 outfile <- "results/5_get_functional_modules/go_prevalence_before.svg"
-svg(outfile, width = 12, height = 8)
+svg(outfile, width = 8, height = 8)
 hist(prevalence$p, xlab = "GO ID Prevalence (Proportion of Proteins)",
-     main = "GO ID Prevalence Before Filtering Out Low-Variance GO IDs",)
+     main = "GO ID Prevalence Before Filtering Out Low-Variance GO IDs",
+     breaks <- seq(0, 1, by = 0.01))
 invisible(dev.off())
 keep_go_ids <- prevalence |>
-  filter(p >= 0.05, p <= 0.95) |> # based on histogram above
+  # remove go terms present in < 2% of proteins and > 99% of proteins
+  filter(p >= 0.02, p <= 0.99) |> # based on histogram above
   pull(go_id) # transform to vector
 
 filtered_go_presence_matrix <- go_presence_matrix |>
   select(uniprot, all_of(keep_go_ids)) # discard low variance GO IDs
-filtered_prevalence |> select(-uniprot) |>
+filtered_prevalence <- filtered_go_presence_matrix |> select(-uniprot) |>
   summarise(across(everything(), ~ mean(.x))) |> # get presence proportion
   pivot_longer(everything(), names_to = "go_id", values_to = "p") # go_id, p cols
 outfile <- "results/5_get_functional_modules/go_prevalence_after.svg"
-svg(outfile, width = 12, height = 8)
-hist(prevalence$p, xlab = "GO ID Prevalence (Proportion of Proteins)",
-     main = "GO ID Prevalence After Filtering Out Low-Variance GO IDs",)
+svg(outfile, width = 8, height = 8)
+hist(filtered_prevalence$p, xlab = "GO ID Prevalence (Proportion of Proteins)",
+     main = "GO ID Prevalence After Filtering Out Low-Variance GO IDs",
+     breaks <- seq(0, 1, by = 0.01), xlim = c(0,1))
 invisible(dev.off())
 
