@@ -9,6 +9,8 @@ source("scripts/setup.R")
 log_file <- "logs/5_get_functional_modules.log"
 configure_logger(log_file)
 
+library(dendextend)
+library(dynamicTreeCut)
 library(tidyr)
 
 dir.create("results/5_get_functional_modules", showWarnings = FALSE)
@@ -171,7 +173,7 @@ colnames(wTOM_matrix) <- all_go_ids
 # Collapse wTOM matrix into long tibble for wTOM score distribution visualisation
 wTOM_tibble <- wTOM_matrix |>
   as.data.frame() |>
-  rownames_to_column("go_1") |>
+  tibble::rownames_to_column("go_1") |>
   pivot_longer(cols = -go_1, names_to = "go_2", values_to = "wTOM_score") |>
   filter(go_1 < go_2) # Drop diagonal and duplicates
 
@@ -183,21 +185,52 @@ hist(wTOM_tibble$wTOM_score, xlab = "wTOM score",
      breaks = seq(0, 1, by = 0.01), xlim = c(0,1),)
 invisible(dev.off())
 
+# Visualise wTOM matrix heatmaps
+outfile <- "results/5_get_functional_modules/wTOM_score_heatmap.svg"
+svg(outfile, width = 8, height = 8)
+heatmap(wTOM_matrix, Rowv = NA, Colv = NA, scale = "none")
+invisible(dev.off())
+outfile <- "results/5_get_functional_modules/wTOM_score_heatmap_2.svg"
+svg(outfile, width = 8, height = 8)
+heatmap(wTOM_matrix, scale = "none")
+invisible(dev.off())
 
 
 
-# Cluster TOM
-diss <- 1 - TOM
-tree <- hclust(as.dist(diss), method = "average")
+# Find functional modules
+log_info("Finding GO ID clusters ...")
+dissimilarity_matrix <- 1 - wTOM_matrix
+tree <- hclust(as.dist(dissimilarity_matrix), method = "average")
 
-# Cut into modules 
-modules <- dynamicTreeCut::cutreeDynamic(
+# Cut into modules and plot dendrogram with associated modules
+modules <- cutreeDynamic(
   dendro = tree,
-  distM = diss,
+  distM = dissimilarity_matrix,
   deepSplit = 2,
-  pamRespectsDendro = FALSE
+  pamRespectsDendro = FALSE,
+  minClusterSize = 5
 )
 
+# Create dendrogram, assigning empty modules to a dedicated NA module
+modules_ints <- as.integer(factor(modules))
+module_NA <- max(modules_ints, na.rm = TRUE) + 1
+modules_ints[is.na(modules_ints)] <- module_NA
+names(modules_ints) <- rownames(wTOM_matrix)
+dend <- as.dendrogram(tree)
+dend <- set_labels(dend, rownames(wTOM_matrix))
+
+palette <- viridis::viridis(length(unique(modules_ints)))
+module_colours <- palette[modules_ints]
+
+# Plot
+outfile <- "results/5_get_functional_modules/go_modules_dendrogram.svg"
+svg(outfile, width = 16, height = 12)
+par(mar = c(20, 4, 4, 2))
+plot(dend, main = "GO ID Dendrogram")
+colored_bars(module_colours, dend, rowLabels = "Module", y_scale = 0.2)
+invisible(dev.off())
 
 
+# ?
+log_info("Clusters found")
 
