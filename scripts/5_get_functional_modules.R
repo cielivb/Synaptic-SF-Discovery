@@ -9,7 +9,7 @@ source("scripts/setup.R")
 log_file <- "logs/5_get_functional_modules.log"
 configure_logger(log_file)
 
-library(dendextend)
+suppressPackageStartupMessages(library(dendextend))
 library(dynamicTreeCut)
 library(tidyr)
 
@@ -20,9 +20,9 @@ plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
 # Read in shape data (taxon, uniprot, geom-etc)
 taxa <- c("fly", "human", "mouse", "rat", "worm", "zebrafish")
-shape_df <- read_csv(
-  "results/3_select_shape_features/selected.csv", show_col_types = FALSE
-)
+#shape_df <- read_csv(
+#  "results/3_select_shape_features/selected.csv", show_col_types = FALSE
+#)
 
 # Read in function data (uniprot, go_id)
 function_df <- bind_rows(lapply(taxa, function(taxon) {
@@ -197,7 +197,9 @@ invisible(dev.off())
 
 
 
-# Find functional modules
+
+# Cluster GO IDs into functional modules based off wTOM matrix
+
 log_info("Finding GO ID clusters ...")
 dissimilarity_matrix <- 1 - wTOM_matrix
 tree <- hclust(as.dist(dissimilarity_matrix), method = "average")
@@ -206,12 +208,13 @@ tree <- hclust(as.dist(dissimilarity_matrix), method = "average")
 modules <- cutreeDynamic(
   dendro = tree,
   distM = dissimilarity_matrix,
-  deepSplit = 2,
-  pamRespectsDendro = FALSE,
-  minClusterSize = 5
+  deepSplit = 3, # Want to err on the side of more fine-grained modules
+  pamRespectsDendro = TRUE, # re-assign borderline GO IDs if helpful
+  minClusterSize = 5 # Produces a relatively coherent clustering
 )
 
-# Create dendrogram, assigning empty modules to a dedicated NA module
+# For visualisation, create dendrogram, assigning empty modules to a dedicated 
+# NA module
 modules_ints <- as.integer(factor(modules))
 module_NA <- max(modules_ints, na.rm = TRUE) + 1
 modules_ints[is.na(modules_ints)] <- module_NA
@@ -230,7 +233,46 @@ plot(dend, main = "GO ID Dendrogram")
 colored_bars(module_colours, dend, rowLabels = "Module", y_scale = 0.2)
 invisible(dev.off())
 
+# Get and export mapping between module ID and member GO IDs
+module_go_map <- tibble(module = modules_ints, go_id = names(modules_ints))
+write_csv(module_go_map, "results/5_get_functional_modules/module_go_map.csv")
+module_go_map <- module_go_map |>
+  group_by(module) |> summarise(go_ids = list(go_id), .groups = "drop")
 
-# ?
-log_info("Clusters found")
+# For each module in each protein, get the percentage of GO IDs in that module
+# that are linked to that protein ('module strength')
+
+log_info("Computing module strengths per protein ...")
+
+# For each module, take the GO ID columns from filtered_go_presence_matrix, then
+# compute the proportion of GO IDs present
+module_strengths <- sapply(module_go_map$go_ids, function(module_go_ids) {
+  module_go_cols <- filtered_go_presence_matrix[, module_go_ids, drop = FALSE]
+  return(rowMeans(module_go_cols)) # mean of binary values -> proportion present
+})
+colnames(module_strengths) <- paste0("module_", module_go_map$module)
+
+# Merge module_strengths into filtered_go_presence_matrix to get a complete
+# functional feature set with raw GO presence/absence and module strengths
+functional_features <- bind_cols(
+  filtered_go_presence_matrix, tibble(as.data.frame(module_strengths)))
+write_csv(
+  functional_features, "results/5_get_functional_modules/functional_features.csv")
+
+
+# Report degree of functional feature space reduction
+num_go_ids_bef_filt <- ncol(go_presence_matrix |> select(starts_with("GO:"))) 
+num_go_ids_aft_filt <- ncol(functional_features |> select(starts_with("GO:")))
+num_modules <- ncol(functional_features |> select(starts_with("module_")))
+log_info(
+  glue("Functional feature space: \
+  {num_go_ids_bef_filt} GO IDs before variance filtering; \
+  {num_go_ids_aft_filt} GO IDs after variance filtering; \
+  {num_modules} functional modules detected")
+)
+
+head(functional_features |> select(starts_with("module_")))
+log_info("Script complete")
+
+
 
