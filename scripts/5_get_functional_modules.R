@@ -217,7 +217,7 @@ module_NA <- max(modules_ints, na.rm = TRUE) + 1
 modules_ints[is.na(modules_ints)] <- module_NA
 names(modules_ints) <- rownames(wTOM_matrix)
 dend <- as.dendrogram(tree)
-dend <- set_labels(dend, rownames(wTOM_matrix))
+dend <- set_labels(dend, rep("", length(labels(dend))))
 
 palette <- viridis::viridis(length(unique(modules_ints)))
 module_colours <- palette[modules_ints]
@@ -225,7 +225,7 @@ module_colours <- palette[modules_ints]
 # Plot
 outfile <- "results/5_get_functional_modules/go_modules_dendrogram.svg"
 svg(outfile, width = 16, height = 12)
-par(mar = c(20, 4, 4, 2))
+par(mar = c(16, 4, 4, 4))
 plot(dend, main = "GO ID Dendrogram")
 colored_bars(module_colours, dend, rowLabels = "Module", y_scale = 0.2)
 invisible(dev.off())
