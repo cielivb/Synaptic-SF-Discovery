@@ -12,6 +12,8 @@ configure_logger(log_file)
 library(tidyr)
 
 dir.create("results/5_get_functional_modules", showWarnings = FALSE)
+plan(multisession, workers = parallel::detectCores(logical = FALSE))
+
 
 
 # Read in shape data (taxon, uniprot, geom-etc)
@@ -77,7 +79,6 @@ invisible(dev.off())
 # Use Jaccard because it treats co-absence as uninformative, and the GO ID
 # presence vectors are likely to be sparse based on the above histograms.
 log_info("Creating GO ID co-presence matrix ...")
-plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
 jaccard <- function(x, y) {
   intersection <- sum(x == 1 & y == 1)
@@ -128,8 +129,7 @@ jaccard_matrix <- j_scores |>
 # Apply weighted TOM-like transformation, adapted from the set-theoretic 1-M 
 # formula presented in Yip & Horvath (2007) to a weighted jaccard matrix.
 log_info("Applying weighted TOM transformation ...")
-
-all_go_ids <- function_df |> distinct(uniprot) |> as.vector()
+all_go_ids <- rownames(jaccard_matrix)
 
 # Returns vector of similarities between GO ID and all other GO IDs
 get_go_pair_similarities <- function (go_id) {
@@ -139,31 +139,34 @@ get_go_pair_similarities <- function (go_id) {
     }
   ))
 }
+similarity_vectors <- future_lapply(all_go_ids, get_go_pair_similarities)
+names(similarity_vectors) <- all_go_ids
 
-# Compute value of element in weighted TOM-like matrix
+# Calculate the weighted TOM score for the ij entry in a TOM matrix
 wTOM <- function (go_1, go_2) {
-  # Calculate the weighted TOM score for the i-j entry in a TOM matrix
-  
-  go_1_pair_similarities <- get_go_pair_similarities(go_1)
-  go_2_pair_similarities <- get_go_pair_similarities(go_2)
+  # Get vector of similarities between go_1 and all other GO IDs, likewise for
+  # go_2
+  v1 <- similarity_vectors[[go_1]]
+  v2 <- similarity_vectors[[go_2]]
   
   # Multiply elementwise and then sum result (i.e., get dot product of similarity
   # score vectors) to get numerator
-  numerator <- sum(go_1_pair_similarities * go_2_pair_similarities)
+  numerator <- sum(v1 * v2)
   
   # Choose mean over min or max for denominator to avoid artificially inflating
   # or suppressing similiarities and mitigate large "cliffs" in distribution
-  denominator <- mean(
-    sum(go_1_pair_similarities), 
-    sum(go_2_pair_similarities)
-  ) + 1e-6 # epsilon 1e-6 to prevent division by 0
+  denominator <- mean(sum(v1), sum(v2)) + 1e-6
   
   return(numerator / denominator)
 }
 
 # Apply wTOM transformation to jaccard matrix
-go_ids <- rownames(jaccard_matrix)
-wTOM_matrix <- outer(go_ids, go_ids, Vectorize(wTOM))
+wTOM_matrix <- future_sapply(all_go_ids, function(go_i) {
+  return(sapply(all_go_ids, function(go_j) { wTOM(go_i, go_j) }))
+})
+wTOM_matrix <- t(wTOM_matrix) # want row cols to be go_i values (for my sanity)
+rownames(wTOM_matrix) <- all_go_ids
+colnames(wTOM_matrix) <- all_go_ids
 
 # Collapse wTOM matrix into long tibble for wTOM score distribution visualisation
 wTOM_tibble <- wTOM_matrix |>
