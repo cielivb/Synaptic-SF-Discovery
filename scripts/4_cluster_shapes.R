@@ -1,21 +1,4 @@
-# (Attempt to) Cluster protein shapes within taxa.
-
-# "Do synaptic proteins across taxa form discrete geometric clusters in 
-# geometric feature space?"
-
-# Results: no meaningful geometric clusters could be found. The manifold appears
-# continous across species, and many proteins consistently fall into cluster 0
-# ("noise"), and the majority of proteins have lower membership probabilities
-# in their assigned clusters. Silhouette analysis (for taxa with more than 1
-# assigned cluster) also yields average silhouette widths between 0.05 and 0.24
-# indicating poor cluster assignment. These results were taken from using 
-# minPts = 5 in both hdbscan calls. It seems unlikely that adjusting parameters
-# of either UMAP or HDBSCAN will alter these results. Therefore, I will conclude
-# that I could not detect clear and meaningful cluster structure in geometric 
-# feature space.
-
-# Interesting tangents:
-# - Would this be true for other protein sets beyond synaptic proteins?
+# (Attempt to) Cluster protein shapes within taxa and across taxa.
 
 
 source("scripts/setup.R")
@@ -34,11 +17,32 @@ dir.create("results/4_cluster_shapes", showWarnings = FALSE)
 
 ### CLUSTER WITHIN TAXA --------------------------------------------------------
 
+# Results: no meaningful geometric clusters could be found. The manifold appears
+# continous across species, and many proteins consistently fall into cluster 0
+# ("noise"), and the majority of proteins have lower membership probabilities
+# in their assigned clusters. Silhouette analysis (for taxa with more than 1
+# assigned cluster) also yields average silhouette widths between 0.05 and 0.24
+# indicating poor cluster assignment. These results were taken from using 
+# minPts = 5 in both hdbscan calls. It seems unlikely that adjusting parameters
+# of either UMAP or HDBSCAN will alter these results. Therefore, I will conclude
+# that I could not detect clear and meaningful cluster structure in geometric 
+# feature space.
+
+# Interesting tangents:
+# - Would this be true for other protein sets beyond synaptic proteins?
+
+clean_string <- function(s) {
+  cleaned <- s |>
+    gsub(" ", "_", x = _) |> 
+    gsub("[\\%()&#:/.,-]", "", x = _) |> 
+    tolower()
+  return(cleaned)
+}
 
 # Plot UMAP embedding, colouring points by clusters
 plot_umap_embedding_clusters <- function(geom_df, taxon) {
-  
-  umap_plot_path <- glue("results/4_cluster_shapes/umap_{taxon}.svg")
+  t <- clean_string(taxon)
+  umap_plot_path <- glue("results/4_cluster_shapes/umap_{t}.svg")
   svg(umap_plot_path, width = 8, height = 6)
   
   plt <- ggplot(geom_df, aes(x = UMAP1, y = UMAP2, color = factor(umap_cluster))) +
@@ -166,7 +170,43 @@ cluster_df <- bind_rows(clustered)
 
 
 
-### FIND GEOMETRICALLY SIMILAR WITHIN-TAXA-CLUSTERS ACROSS TAXA ----------------
+### CLUSTER PROTEIN SHAPES ACROSS TAXA ----------------
 
+log_info("Clustering proteins across taxa ...")
 
+# Create UMAP embedding
+set.seed(254)
+features <- geom_df |> select(starts_with("scaled_"))
+umap_embedding <- umap(
+  features,
+  n_neighbors = 15,
+  min_dist = 0.01,
+  n_components = 2,
+  metric = "euclidean",
+  init = "pca",
+  spread = 1
+)
+geom_df$UMAP1 <- umap_embedding[,1]
+geom_df$UMAP2 <- umap_embedding[,2]
 
+# Run HDBSCAN on UMAP embedding to discover UMAPped clusters
+hdb <- hdbscan(umap_embedding, minPts = 2)
+geom_df$umap_cluster <- hdb$cluster # cluster 0 = noise
+geom_df$umap_cluster_prob <- hdb$membership_prob
+
+# Visualise clusters on UMAP embedding
+plot_umap_embedding_clusters(geom_df, "All Taxa")
+
+# Run HDBSCAN on the scaled features themselves (skipping UMAP - HDBSCAN-only)
+hdb <- hdbscan(features, minPts = 5)
+geom_df$cluster <- as.factor(hdb$cluster) # cluster 0 = noise
+geom_df$cluster_prob <- hdb$membership_prob
+
+# Visualise HDBSCAN-only clusters on scaled features
+outfile <- glue("results/4_cluster_shapes/hdbscan_clusters_on_features_all_taxa.svg")
+svg(outfile, width = 12, height = 12)
+plt <- ggpairs(
+  geom_df, columns = colnames(features), aes(color = cluster)) +
+  labs(title = glue("Feature Distributions with HDBSCAN Clusters (All Taxa)"))
+print(plt)
+invisible(dev.off())

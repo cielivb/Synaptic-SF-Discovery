@@ -11,29 +11,28 @@ configure_logger(log_file)
 
 suppressPackageStartupMessages(library(dendextend))
 library(dynamicTreeCut)
+library(ggplot2)
 library(tidyr)
 
 dir.create("results/5_get_functional_modules", showWarnings = FALSE)
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
+taxa <- c("fly","human","mouse","rat","worm","zebrafish")
 
-
-
-# Read in shape data (taxon, uniprot, geom-etc)
-taxa <- c("fly", "human", "mouse", "rat", "worm", "zebrafish")
-#shape_df <- read_csv(
-#  "results/3_select_shape_features/selected.csv", show_col_types = FALSE
-#)
 
 # Read in function data (uniprot, go_id)
 function_df <- bind_rows(lapply(taxa, function(taxon) {
   func_file <- glue("results/1_filter_by_func/{taxon}.csv")
-  taxon_df <- read_csv(func_file, show_col_types = FALSE)
+  taxon_df <- read_csv(func_file, show_col_types = FALSE) |>
+    mutate(taxon = !!taxon)
   return(taxon_df)
 }))
+
+str(function_df)
 
 # Transform function data into sparse binary matrix with rows = proteins and
 # columns = taxon, uniprot, and a column per GO ID
 go_presence_matrix <- function_df |>
+  select(-taxon) |>
   mutate(value = 1L) |> # all existing GO IDs are associated with 1 (present)
   pivot_wider(
     id_cols = uniprot, # keep
@@ -254,10 +253,34 @@ colnames(module_strengths) <- paste0("module_", module_go_map$module)
 
 # Merge module_strengths into filtered_go_presence_matrix to get a complete
 # functional feature set with raw GO presence/absence and module strengths
-functional_features <- bind_cols(
-  filtered_go_presence_matrix, tibble(as.data.frame(module_strengths)))
+functional_features <- inner_join(
+  function_df |> distinct(uniprot, taxon), 
+  bind_cols(
+    filtered_go_presence_matrix, 
+    tibble(as.data.frame(module_strengths))
+  )
+)
 write_csv(
   functional_features, "results/5_get_functional_modules/functional_features.csv")
+
+
+# Visualise module strength distributions over entire dataset
+plot_module_strengths <- function(df, title) {
+  # Code adapted from plot_features_species_violin in select_shape_features.R
+  df_long <- df |> select(-starts_with("GO:"), -uniprot) |>
+    pivot_longer(cols = -taxon, names_to = "feature", values_to="value")
+  plt <- ggplot(df_long, aes(x=taxon, y=value, fill=taxon)) +
+    geom_violin(trim=FALSE) +
+    stat_summary(fun=median, geom="point", size=1.5, color="black") +
+    facet_grid(rows=vars(feature), scales="free_y") +
+    labs(title = title) +
+    theme(strip.text.y = element_text(angle=0))
+  outfile <- glue("results/5_get_functional_modules/{clean_string(title)}.svg")
+  svg(outfile, width=12, height = 18)
+  print(plt)
+  invisible(dev.off())
+}
+plot_module_strengths(functional_features,  "Module Strength Distributions by Taxa")
 
 
 # Report degree of functional feature space reduction
