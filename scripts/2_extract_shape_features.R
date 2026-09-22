@@ -149,14 +149,14 @@ get_kurtosis <- function(radial_distances) {
 
 ### Define visualisation functions ----------------------------------------
 
-plot_features_species_violin <- function(df, title) {
+plot_features_by_taxa_violin <- function(df, title) {
   
   # Rotate df to get df with taxon, feature, and value columns
-  geom_long <- df |>
+  df_long <- df |>
     pivot_longer(cols = -taxon, names_to = "feature", values_to = "value")
   
   # Create violin plot
-  plt <- ggplot(geom_long, aes(x = taxon, y = value, fill = taxon)) +
+  plt <- ggplot(df_long, aes(x = taxon, y = value, fill = taxon)) +
     geom_violin(trim = FALSE) +
     stat_summary(fun = median, geom = "point", size = 1.5, color = "black") +
     facet_grid(rows = vars(feature), scales = "free_y") +
@@ -184,7 +184,7 @@ done <- future_lapply(afdb_taxon_meta$destination, function (afdb_taxon_tar, out
   
   
   taxon <- sub("\\.tar$", "", basename(afdb_taxon_tar)) # e.g., worm
-  shape_file <- glue("{outdir}/{taxon}_geom.csv")
+  shape_file <- glue("{outdir}/{taxon}_shape.csv")
   if (file.exists(shape_file)) { 
     return(NULL) # Skip extraction if features already extracted 
   } 
@@ -246,14 +246,14 @@ done <- future_lapply(afdb_taxon_meta$destination, function (afdb_taxon_tar, out
 
 
 
-### Correct for skew and normalise candidate shape features ---------------
+### Skew-correct and MAD-scale candidate shape feature distributions ------
 
-log_info("Correcting and normalising candidate shape features ...")
+log_info("Skew-correcting and MAD-scaling candidate shape feature distributions ...")
 
 # Read in shape files for each taxon
 taxa <- c("fly", "human", "mouse", "rat", "worm", "zebrafish")
 og_shape_df <- bind_rows(lapply(taxa, function (taxon, outdir) {
-  shape_file <- glue("{outdir}/{taxon}_geom.csv")
+  shape_file <- glue("{outdir}/{taxon}_shape.csv")
   taxon_df <- read_csv(shape_file, show_col_types = FALSE) |>
     mutate(taxon = taxon)
   return(taxon_df)
@@ -261,16 +261,53 @@ og_shape_df <- bind_rows(lapply(taxa, function (taxon, outdir) {
 shape_df <- og_shape_df |> select(-uniprot) # Temporarily remove uniprot column
 
 # Visualise candidate shape feature distributions before corrections
-plot_features_species_violin(
+plot_features_by_taxa_violin(
   shape_df, "Candidate Shape Feature Distributions by Taxa (Raw)"
 )
 
-# Correct for skew in candidate shape features, then visualise
+# Correct for skew in candidate shape features via log transform, then visualise.
+# Specifically, correct skew in weighted and unweighted kurtosis, eccentricity, 
+# length, and rg.
+skewed_cols <- list(
+  "kurtosis_w", "kurtosis_u", "eccentricity_w", "eccentricity_u",
+  "length_w", "length_u", "rg_w", "rg_u"
+)
+shape_df <- shape_df |>
+  mutate(across(all_of(skewed_cols), ~ log(.x + 1e-8), .names = "log_{.col}")) |>
+  select(-all_of(skewed_cols))
+plot_features_by_taxa_violin(
+  shape_df, "Candidate Shape Feature Distributions by Taxa (Skew-Corrected)"
+)
+
+# Use median-MAD-standardisation on geometric features to normalise
+# variance while staying robust against outliers, so that PCA-based variance
+# filtering can be used to eliminate low variance features
+mad_scale <- function(v) {(v - median(v)) / mad(v)}
+shape_df <- shape_df |>
+  mutate(across(everything(), ~ mad_scale(.x), .names = "mad_{.col}"))
+plot_features_by_taxa_violin(
+  shape_df |> starts_with("mad_"), 
+  "Candidate Shape Feature Distributions by Taxa (Skew-Corrected & MAD-Scaled)"
+)
 
 
 
 
+### De-correlate candidate shape features to reduce redundancy ------------
 
+log_info("De-correlating candidate shape features ...")
+
+# Visualise correlations between candidate shape features
+plt <- ggcorr( # default correlation computation = pairwise, pearson
+  shape_df |> select(where(is.numeric)), nbreaks = 6, label = TRUE,
+  labs(title = "Candidate Shape Feature Correlations Before Decorrelation"),
+  theme(plot.title = element_text(size = 18, hjust = 0.2))
+)
+svg(glue("{outdir}/corr_before.svg", width = 16, height = 16))
+print(plt)
+invisible(dev.off())
+
+# Remove features based on above correlation plot
 
 
 
