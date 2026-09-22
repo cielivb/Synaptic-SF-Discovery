@@ -1,8 +1,15 @@
 # Set up environment
 
-dir.create("data", showWarnings = FALSE, recursive = TRUE)
-dir.create("results", showWarnings = FALSE, recursive = TRUE)
-dir.create("logs", showWarnings = FALSE, recursive = TRUE)
+# Create project directories
+dir.create("logs", showWarnings = FALSE)
+dir.create("data", showWarnings = FALSE)
+dir.create("results", showWarnings = FALSE)
+result_dirs <- list(
+  "1_filter_proteins", "2_extract_functional_features", "3_extract_shape_features",
+  "4_visualise_manifolds", "5_cluster_and_test_cross_taxa_sf_manifold",
+  "6_characterise_clusters", "7_bonus_analyses"
+)
+lapply(result_dirs, function (d) dir.create(d, showWarnings = FALSE))
 
 
 ### RESTORE PACKAGES FROM LOCKFILE ---------------------------------------------
@@ -28,9 +35,7 @@ library(readr)
 options(dplyr.summarise.inform = FALSE)
 
 
-
-
-### CONFIGURE LOGGER -----------------------------------------------------------
+### UTILITY FUNCTIONS ---------------------------------------------------
 
 configure_logger <- function(logfile, worker=FALSE) {
   if (file.exists(logfile) & !worker) {
@@ -40,10 +45,7 @@ configure_logger <- function(logfile, worker=FALSE) {
   log_appender(appender_file(logfile), index = 2)
 }
 
-
-
-### OTHER UTILITY FUNCTIONS ---------------------------------------------------
-
+# Remove punctuation and whitespace etc for consistent filename formatting
 clean_string <- function(s) {
   cleaned <- s |>
     gsub(" ", "_", x = _) |> 

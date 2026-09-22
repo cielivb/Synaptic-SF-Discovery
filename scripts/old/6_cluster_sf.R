@@ -19,6 +19,11 @@ df <- read_csv(
   col_names = TRUE, show_col_types = FALSE
 )
 
+
+
+
+# ### COMPUTE SHAPE-FUNCTION CLUSTERS ------------------------------------------
+
 log_info("Computing shape-function clusters across all proteins ...")
 
 # Create UMAP embedding
@@ -89,3 +94,13 @@ plt <- ggplot(df, aes(
   )
 print(plt)
 invisible(dev.off())
+
+
+### ASSESS CLUSTERING ROBUSTNESS ------------------------------------------
+
+# Visualise cluster membership score distributions, ?coloured by cluster?
+
+# Compute and visualise cluster silhouette scores
+
+
+### STATISTICALLY VALIDATE CLUSTER DISTINCTIVENESS -----------------------------

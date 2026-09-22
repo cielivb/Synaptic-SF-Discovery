@@ -12,7 +12,7 @@ def extract_go(uri):
 
 
 # Load synaptic GO IDs
-synaptic_go_path = Path("results/1_filter_by_func/goslim_synapse_go_ids.csv")
+synaptic_go_path = Path("results/1_filter_proteins/goslim_synapse_go_ids.csv")
 synaptic_go_ids = pd.read_csv(str(synaptic_go_path))["go_id"].tolist()
 
 # Load GO-basic JSON into directed graph
@@ -22,7 +22,7 @@ with open("data/go-basic.json") as file:
 for edge in go["graphs"][0]["edges"]: # Add child -> parent edges
     child, parent = edge["sub"], edge["obj"]
     go_graph.add_edge(extract_go(child), extract_go(parent))
-for node in go["graphs"][0]["nodes"]: # Add node metadata
+for node in go["graphs"][0]["nodes"]: # Add node metadata - used downstream
     node_id = extract_go(node["id"])
     go_graph.add_node(node_id, **node)
 
@@ -37,7 +37,7 @@ for go_id in synaptic_go_ids:
         ancestor_map[go_id] = []
 
 # Write JSON mapping
-outpath = Path("results/1_filter_by_func/synaptic_go_ancestors.json")
+outpath = Path("results/1_filter_proteins/synaptic_go_ancestors.json")
 with open(outpath, "w") as outfile:
     json.dump(ancestor_map, outfile, indent=2)
 
@@ -52,7 +52,7 @@ for go_id in target_go_ids:
     if go_id in go_graph.nodes:
         attrs = go_graph.nodes[go_id]
         row = {"go_id": go_id}
-        row.update(attrs)
+        row.update(attrs) # add node metadata to row dict
         rows.append(row)
 metadata_df = pd.DataFrame(rows)
-metadata_df.to_csv("results/1_filter_by_func/go_metadata.csv", index=False)
+metadata_df.to_csv("results/1_filter_proteins/go_metadata.csv", index=False)
