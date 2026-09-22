@@ -282,6 +282,7 @@ go_module_members <- go_module_members |>
 # The module score represents the proportion of GO IDs associated with a given
 # module that are also associated with a given protein.
 
+
 # For each module, take the GO ID columns from go_presence_matrix_f, then
 # compute the proportion of GO IDs present
 module_scores <- sapply(go_module_members$go_ids, function(module_go_ids) {
@@ -297,6 +298,24 @@ functional_features <- inner_join( # join on uniprot
   bind_cols(go_presence_matrix_f, tibble(as.data.frame(module_scores)))
 )
 write_csv(functional_features, glue("{outdir}/functional_features.csv"))
+
+
+# Visualise module score distributions over entire dataset
+plot_module_scores <- function(df, title) {
+  # Code adapted from plot_features_taxa_violin in 2_extract_shape_features.R
+  df_long <- df |> select(-starts_with("GO:"), -uniprot) |>
+    pivot_longer(cols = -taxon, names_to = "feature", values_to="value")
+  plt <- ggplot(df_long, aes(x=taxon, y=value, fill=taxon)) +
+    geom_violin(trim=FALSE) +
+    stat_summary(fun=median, geom="point", size=1.5, color="black") +
+    facet_grid(rows=vars(feature), scales="free_y") +
+    labs(title = title) +
+    theme(strip.text.y = element_text(angle=0))
+  svg(glue("{outdir}/{clean_string(title)}.svg"), width=12, height = 18)
+  print(plt)
+  invisible(dev.off())
+}
+plot_module_scores(functional_features,  "Module Score Distributions by Taxa")
 
 
 
@@ -334,6 +353,7 @@ log_info(
 
 
 
+log_info("Done!")
 
 
 

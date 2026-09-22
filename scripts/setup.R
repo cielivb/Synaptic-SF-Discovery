@@ -32,7 +32,7 @@ dir.create("results", showWarnings = FALSE)
 result_dirs <- list(
   "1_filter_proteins", "2_extract_shape_features", 
   "3_extract_functional_features", "4_visualise_manifolds", 
-  "5_cluster_and_test_cross_taxa_sf_manifold",
+  "5_analyse_cross_taxa_sf_manifold",
   "6_characterise_clusters", "7_bonus_analyses"
 )
 lapply(result_dirs, function (d) {
