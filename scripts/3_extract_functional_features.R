@@ -21,6 +21,43 @@ plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
 
 
+### Define visualisation functions ----------------------------------------
+
+draw_go_prevalence_props_hist <- function (df, title) {
+  prevalence <- df |> select(-uniprot, -taxon) |>
+    summarise(across(everything(), ~ mean(.x))) |> # get GO ID presence proportions
+    pivot_longer(everything(), names_to = "go_id", values_to = "p") # go_id, p cols
+  
+  svg(glue("{outdir}/{clean_string(title)}.svg", width = 8, height = 8))
+  hist(prevalence$p, xlab = "GO ID Prevalence (Proportion of Proteins)",
+       main = title, breaks = seq(0, 1, by = 0.01), xlim = c(0,1))
+  invisible(dev.off())
+  
+  return(prevalence)
+}
+
+
+visualise_matrix_value_distr <- function (mat, title, x_label) {
+  
+  # Collapse matrix into long tibble
+  long_tibble <- mat |> as.data.frame() |>
+    tibble::rownames_to_column("go_1") |>
+    pivot_longer(cols = -go_1, names_to = "go_2", values_to = "score") |>
+    filter(go_1 < go_2) # Drop diagonals and duplicates
+  
+  # Visualise score distribution
+  svg(glue("{outdir}/{clean_string(title)}.svg"), width = 8, height = 8)
+  hist(long_tibble$score, xlab = x_label, main = title,
+       breaks = seq(0, 1, by = 0.01), xlim = c(0, 1))
+  invisible(dev.off())
+  
+}
+
+
+
+
+### Load data into matrix -------------------------------------------------
+
 # Read in taxon GO annotation data (uniprot, go_id)
 ann_df <- bind_rows(lapply(taxa, function(taxon) {
   func_file <- glue("results/1_filter_proteins/{taxon}.csv")
@@ -45,18 +82,7 @@ go_presence_matrix <- ann_df |>
 
 ### Filter out low variance GO IDs (those almost always present or absent)
 
-draw_go_prevalence_props_hist <- function (df, title) {
-  prevalence <- df |> select(-uniprot, -taxon) |>
-    summarise(across(everything(), ~ mean(.x))) |> # get GO ID presence proportions
-    pivot_longer(everything(), names_to = "go_id", values_to = "p") # go_id, p cols
-  
-  svg(glue("{outdir}/{clean_string(title).svg}", width = 8, height = 8))
-  hist(prevalence$p, xlab = "GO ID Prevalence (Proportion of Proteins)",
-       main = title, breaks = seq(0, 1, by = 0.1))
-  invisible(dev.off())
-}
-
-draw_go_presence_props_hist(
+prevalence <- draw_go_prevalence_props_hist(
   go_presence_matrix, "GO ID Prevalence Distribution Before Filtering"
 )
 
@@ -67,7 +93,7 @@ keep_go_ids <- prevalence |>
 go_presence_matrix_f <- go_presence_matrix |>
   select(uniprot, taxon, all_of(keep_go_ids))
 
-draw_go_prevalence_props_hist(
+prevalence <- draw_go_prevalence_props_hist(
   go_presence_matrix_f, "GO ID Prevalence Distribution After Filtering"
 )
 
@@ -89,6 +115,11 @@ jaccard <- function(x, y) {
 # more proteins. I am aiming to detect GO modules that are informative
 # across taxa without biasing towards any particular taxon. The per taxa matrices
 # will be averaged to give each taxon even weight.
+# The choice to use Jaccard similarity stems from the idea that GO IDs that
+# tend to appear in the same proteins are correlated and likely to be part of a
+# functional module, and one can use Jaccard similarity to evaluate how freque-
+# ntly GO IDs tend to appear together. Jaccard similarity also treats co-absence
+# as uninformative, which is handy for sparse matrices.
 similarity_matrices <- future_lapply(taxa, function (taxon) {
   
   taxon_matrix <- go_presence_matrix_f |> 
@@ -121,6 +152,12 @@ similarity_matrices <- future_lapply(taxa, function (taxon) {
 
 # Average the taxa-specific similarity matrices into a unified similarity matrix
 similarity_matrix <- Reduce("+", similarity_matrices) / length(similarity_matrices)
+
+# Visualise similarity score distribution
+visualise_matrix_value_distr(
+  similarity_matrix, x_label = "Jaccard Similarity Score",
+  title = "Distribution of Pairwise Jaccard Similarity Scores (GO ID Presence)"
+)
 
 
 
