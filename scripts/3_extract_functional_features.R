@@ -148,11 +148,11 @@ similarity_matrices <- future_lapply(taxa, function (taxon) {
   j_scores <- bind_rows(j_scores)
   
   # Transform tibble (go_1, go_2, jaccard) into matrix
-  jaccard_matrix <- j_scores |> 
+  similarity_matrix <- j_scores |> 
     pivot_wider(names_from = go_2, values_from = jaccard) |> 
     tibble::column_to_rownames("go_1") |> as.matrix()
   
-  return(jaccard_matrix)
+  return(similarity_matrix)
 
 })
 
@@ -164,7 +164,7 @@ visualise_matrix_value_distr(
   similarity_matrix, x_label = "Jaccard Similarity Score",
   title = "Distribution of Pairwise Jaccard Similarity Scores (GO ID Presence)"
 )
-svg("{outdir}/heatmap_jaccard.svg", width = 8, height = 8)
+svg(glue("{outdir}/heatmap_jaccard.svg"), width = 8, height = 8)
 heatmap(similarity_matrix, scale = "none")
 invisible(dev.off())
 
@@ -183,7 +183,7 @@ log_info("Applying wTOM transformation to similarity matrix ...")
 get_go_pair_similarities <- function (go_id) {
   return(
     vapply(all_go_ids, FUN.VALUE = double(1), FUN = function(other_go_id) {
-      jaccard_matrix[go_id, other_go_id]
+      similarity_matrix[go_id, other_go_id]
     }
   ))
 }
@@ -206,7 +206,7 @@ wTOM <- function (go_1, go_2) {
 }
 
 
-all_go_ids <- rownames(jaccard_matrix)
+all_go_ids <- rownames(similarity_matrix)
 similarity_vectors <- future_lapply(all_go_ids, get_go_pair_similarities)
 names(similarity_vectors) <- all_go_ids
 
@@ -224,7 +224,7 @@ visualise_matrix_value_distr(
   wTOM_matrix, x_label = "wTOM Score",
   title = "Distribution of wTOM Scores"
 )
-svg("{outdir}/heatmap_wtom.svg", width = 8, height = 8)
+svg(glue("{outdir}/heatmap_wtom.svg"), width = 8, height = 8)
 heatmap(wTOM_matrix, scale = "none")
 invisible(dev.off())
 
@@ -315,6 +315,21 @@ log_info(
 
 
 
+
+### Create GO Network graph coloured by module ----------------------------
+
+# The objective is to understand how GO modules sit relative to each other - 
+# e.g., are any modules nested within other modules, or scattered?
+
+# TODO
+
+
+
+### Create GO network graphs per GO module --------------------------------
+
+# What GO terms make up each module, and how do they sit relative to each other?
+
+# TODO
 
 
 
