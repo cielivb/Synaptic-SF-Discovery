@@ -1,12 +1,13 @@
 # Extract core synaptic protein shape features.
 
-outdir <- "results/2_extract_shape_features/"
+outdir <- "results/2_extract_shape_features"
 log_file = "logs/2_extract_shape_data.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 
 library(R.utils) # unzip gzipped files
-
+library(ggplot2)
+library(tidyr) # pivot_longer
 
 
 
@@ -26,14 +27,14 @@ afdb_taxon_meta <- download_meta |> filter(category == "afdb_taxon")
 
 
 # Extract atomic coordinates for each synaptic protein from AFDB .tar archive
-extract_atom_site_data <- function(taxon, afdb_taxon_tar, atom_site_csv_dir) {
+extract_atom_site_data <- function(taxon, afdb_taxon_tar, atom_site_csv_dir, outdir) {
   # Extract .tar archive
   extract_tar_dir <- glue("{outdir}/{taxon}_extracted_tar")
   untar(afdb_taxon_tar, exdir = extract_tar_dir)
   
   # Make tibble containing path and uniprot for each synaptic protein in taxon
   synaptic_uniprot <- read_csv(
-    glue("results/1_filter_by_func/{taxon}_uniprot_only.csv"), 
+    glue("results/1_filter_proteins/{taxon}_uniprot_only.csv"), 
     show_col_types = FALSE
   )
   pdb_tibble <- tibble(path = list.files(
@@ -175,19 +176,23 @@ plot_features_species_violin <- function(df, title) {
 
 ### Extract raw candidate shape features -----------------------------------
 
+log_info("Extracting raw candidate shape features ...")
 
 # Extract shape data for each taxon in parallel
-done <- future_lapply(afdb_taxon_meta$destination, function (afdb_taxon_tar) {
+done <- future_lapply(afdb_taxon_meta$destination, function (afdb_taxon_tar, outdir) {
   configure_logger(log_file, worker = TRUE)
   
   
   taxon <- sub("\\.tar$", "", basename(afdb_taxon_tar)) # e.g., worm
   shape_file <- glue("{outdir}/{taxon}_geom.csv")
-  
+  if (file.exists(shape_file)) { 
+    return(NULL) # Skip extraction if features already extracted 
+  } 
+
   # Get .csv file per protein containing atom site coordinate + confidence data
   log_info(glue("Extracting {taxon} atom site data ..."))
   atom_site_csv_dir <- glue("{outdir}/{taxon}_atom_sites_csv")
-  extract_atom_site_data(taxon, afdb_taxon_tar, atom_site_csv_dir)
+  extract_atom_site_data(taxon, afdb_taxon_tar, atom_site_csv_dir, outdir)
   atom_site_paths <- list.files(atom_site_csv_dir, full.names = TRUE)
   log_info(glue("Extracted {taxon} atom site data"))
   
@@ -236,21 +241,23 @@ done <- future_lapply(afdb_taxon_meta$destination, function (afdb_taxon_tar) {
   })
   log_info(glue("Computed {taxon} protein shape data"))
 
-})
+}, outdir = outdir)
 
 
 
 
 ### Correct for skew and normalise candidate shape features ---------------
 
+log_info("Correcting and normalising candidate shape features ...")
+
 # Read in shape files for each taxon
 taxa <- c("fly", "human", "mouse", "rat", "worm", "zebrafish")
-og_shape_df <- bind_rows(lapply(taxa, function (taxon) {
+og_shape_df <- bind_rows(lapply(taxa, function (taxon, outdir) {
   shape_file <- glue("{outdir}/{taxon}_geom.csv")
   taxon_df <- read_csv(shape_file, show_col_types = FALSE) |>
     mutate(taxon = taxon)
   return(taxon_df)
-}))
+}, outdir = outdir))
 shape_df <- og_shape_df |> select(-uniprot) # Temporarily remove uniprot column
 
 # Visualise candidate shape feature distributions before corrections

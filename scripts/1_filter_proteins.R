@@ -7,7 +7,7 @@
 # Taxon-Specific Datasets.
 
 
-outdir <- "results/1_filter_proteins/"
+outdir <- "results/1_filter_proteins"
 log_file <- "logs/1_filter_proteins.log"
 source("scripts/setup.R")
 configure_logger(log_file)
@@ -63,7 +63,7 @@ download_meta <- read_csv("data/downloads.csv", show_col_types = FALSE)
 go_taxon_meta <- download_meta |> filter(category == "go_taxon")
 
 log_info("Finding proteins associated with neuron-neuron synapses ...")
-done <- future_lapply(go_taxon_meta$destination, function (go_taxon_file) {
+done <- future_lapply(go_taxon_meta$destination, function (go_taxon_file, outdir) {
   configure_logger(log_file, worker = TRUE)
   
   # Extract taxon name from taxon-specific GO file and define output filenames
@@ -110,6 +110,6 @@ done <- future_lapply(go_taxon_meta$destination, function (go_taxon_file) {
   write_csv(filtered_ann, dest, col_names = TRUE)
   write_csv(filtered_ann |> distinct(uniprot), dest_uniprot_only, col_names = TRUE)
 
-})
+}, outdir = outdir)
 
 log_info("Protein filtration script done")
