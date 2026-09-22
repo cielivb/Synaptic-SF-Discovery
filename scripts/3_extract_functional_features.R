@@ -1,0 +1,97 @@
+# Extract core synaptic protein functional features.
+
+# Group GO IDs into functional modules using a WGCNA-like method, write mapping
+# between module label and member GO IDs, then create a feature dataframe 
+# containing taxon, uniprot, and module scores representing proportion of module
+# GO IDs associated with that protein.
+
+outdir <- "results/3_extract_functional_features"
+log_file <- "logs/3_extract_functional_features.log"
+source("scripts/setup.R")
+configure_logger(log_file)
+
+suppressPackageStartupMessages(library(dendextend))
+library(dynamicTreeCut)
+library(ggplot2)
+library(tidyr)
+
+taxa <- c("fly","human","mouse","rat","worm","zebrafish")
+plan(multisession, workers = parallel::detectCores(logical = FALSE))
+
+
+
+
+# Read in taxon GO annotation data (uniprot, go_id)
+ann_df <- bind_rows(lapply(taxa, function(taxon) {
+  func_file <- glue("results/1_filter_proteins/{taxon}.csv")
+  taxon_df <- read_csv(func_file, show_col_types = FALSE) |>
+    mutate(taxon = !!taxon)
+  return(taxon_df)
+}))
+
+# Transform annnotation dataframe into sparse binary matrix with rows = proteins
+# and columns = uniprot and a column per GO ID
+go_presence_matrix <- ann_df |>
+  mutate(value = 1L) |> # all existing GO IDs are assigned value = 1 (present)
+  pivot_wider(
+    id_cols = c(taxon, uniprot), # keep
+    names_from = go_id, # each go_id value becomes a column
+    values_from = value,
+    values_fill = list(value = 0L) # value 0 = absent in protein
+  )
+
+
+
+
+### Filter out low variance GO IDs (those almost always present or absent)
+
+draw_go_prevalence_props_hist <- function (df, title) {
+  prevalence <- df |> select(-uniprot, -taxon) |>
+    summarise(across(everything(), ~ mean(.x))) |> # get GO ID presence proportions
+    pivot_longer(everything(), names_to = "go_id", values_to = "p") # go_id, p cols
+  
+  svg(glue("{outdir}/{clean_string(title).svg}", width = 8, height = 8))
+  hist(prevalence$p, xlab = "GO ID Prevalence (Proportion of Proteins)",
+       main = title, breaks = seq(0, 1, by = 0.1))
+  invisible(dev.off())
+}
+
+draw_go_presence_props_hist(
+  go_presence_matrix, "GO ID Prevalence Distribution Before Filtering"
+)
+
+# Remove go terms present in < 2% of proteins and > 99% of proteins
+keep_go_ids <- prevalence |>
+  filter(p >= 0.02, p <= 0.99) |> # based on histogram above
+  pull(go_id) # transform to vector
+go_presence_matrix_f <- go_presence_matrix |>
+  select(uniprot, taxon, all_of(keep_go_ids))
+
+draw_go_prevalence_props_hist(
+  go_presence_matrix_f, "GO ID Prevalence Distribution After Filtering"
+)
+
+
+
+
+### Create a taxa-normalised GO ID Jaccard Similarity matrix --------------
+
+# Create raw Jaccard similarity matrices per taxa.
+# Per taxa similarity matrices are needed to average similarities across taxa.
+# An aggregate cross-taxa Jaccard similarity matrix constructed from the entire
+# dataset would bias the similarity scores towards trends present in taxa with
+# more proteins. I am aiming to detect GO modules that are informative
+# across taxa without biasing towards any particular taxon. The per taxa matrices
+# will be averaged to give each taxon even weight.
+similarity_matrices <- future_lapply(taxa, function (taxon) {
+  
+  
+  
+  # Filter out 
+  
+})
+
+
+
+
+### Create a weighted TOM matrix from GO annotation co-occurrence data ----

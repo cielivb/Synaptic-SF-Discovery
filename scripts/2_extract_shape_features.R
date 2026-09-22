@@ -300,15 +300,22 @@ plot_features_by_taxa_violin(mad_df,
 log_info("De-correlating candidate shape features ...")
 
 # Visualise correlations between candidate shape features
-plt <- ggcorr( # default correlation computation = pairwise, pearson
-  mad_df |> select(where(is.numeric)), nbreaks = 6, label = TRUE) +
-  labs(title = stringr::str_wrap(
-    "Candidate Shape Feature Correlations Before Decorrelation", width = 50)
-  ) +
-  theme(plot.title = element_text(size = 18, hjust = 0.2))
-svg(glue("{outdir}/corr_before.svg", width = 16, height = 16))
-print(plt)
-invisible(dev.off())
+done <- future_lapply(taxa, function (taxon, outdir) {
+  taxon_df <- mad_df |> filter(taxon == !!taxon)
+  
+  plt <- ggcorr( # default correlation computation = pairwise, pearson
+    mad_df |> select(where(is.numeric)), nbreaks = 6, label = TRUE) +
+    labs(title = stringr::str_wrap(
+      glue("Shape Feature Correlations Before Decorrelation ({taxon})"),
+      width = 50)
+    ) +
+    theme(plot.title = element_text(size = 18, hjust = 0.2))
+  
+  svg(glue("{outdir}/corr_{taxon}_before.svg", width = 18, height = 16))
+  print(plt)
+  invisible(dev.off())
+
+  }, outdir = outdir)
 
 # Remove features based on above correlation plot
 # Naturally, unweighted and weighted versions of the same metric are highly
