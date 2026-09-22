@@ -7,6 +7,7 @@ configure_logger(log_file)
 
 library(R.utils) # unzip gzipped files
 library(ggplot2)
+library(GGally)
 library(tidyr) # pivot_longer
 
 
@@ -258,7 +259,8 @@ og_shape_df <- bind_rows(lapply(taxa, function (taxon, outdir) {
     mutate(taxon = taxon)
   return(taxon_df)
 }, outdir = outdir))
-shape_df <- og_shape_df |> select(-uniprot) # Temporarily remove uniprot column
+# Temporarily remove uniprot column
+shape_df <- og_shape_df |> select(-uniprot)
 
 # Visualise candidate shape feature distributions before corrections
 plot_features_by_taxa_violin(
@@ -266,11 +268,10 @@ plot_features_by_taxa_violin(
 )
 
 # Correct for skew in candidate shape features via log transform, then visualise.
-# Specifically, correct skew in weighted and unweighted kurtosis, eccentricity, 
-# length, and rg.
-skewed_cols <- list(
-  "kurtosis_w", "kurtosis_u", "eccentricity_w", "eccentricity_u",
-  "length_w", "length_u", "rg_w", "rg_u"
+# Specifically, correct skew in weighted and unweighted kurtosis, length, and rg.
+# Attempting to log transform eccentricity makes the eccentricity skew worse.
+skewed_cols <- c(
+  "kurtosis_w", "kurtosis_u", "length_w", "length_u", "rg_w", "rg_u"
 )
 shape_df <- shape_df |>
   mutate(across(all_of(skewed_cols), ~ log(.x + 1e-8), .names = "log_{.col}")) |>
@@ -281,12 +282,13 @@ plot_features_by_taxa_violin(
 
 # Use median-MAD-standardisation on geometric features to normalise
 # variance while staying robust against outliers, so that PCA-based variance
-# filtering can be used to eliminate low variance features
+# filtering can be used to eliminate low variance features. MAD-scaling gives
+# each distribution MAD = 1.
 mad_scale <- function(v) {(v - median(v)) / mad(v)}
-shape_df <- shape_df |>
-  mutate(across(everything(), ~ mad_scale(.x), .names = "mad_{.col}"))
-plot_features_by_taxa_violin(
-  shape_df |> starts_with("mad_"), 
+mad_df <- shape_df |>
+  mutate(across(where(is.numeric), ~ mad_scale(.x), .names = "mad_{.col}")) |>
+  select(taxon, starts_with("mad_"))
+plot_features_by_taxa_violin(mad_df, 
   "Candidate Shape Feature Distributions by Taxa (Skew-Corrected & MAD-Scaled)"
 )
 
@@ -299,18 +301,43 @@ log_info("De-correlating candidate shape features ...")
 
 # Visualise correlations between candidate shape features
 plt <- ggcorr( # default correlation computation = pairwise, pearson
-  shape_df |> select(where(is.numeric)), nbreaks = 6, label = TRUE,
-  labs(title = "Candidate Shape Feature Correlations Before Decorrelation"),
+  mad_df |> select(where(is.numeric)), nbreaks = 6, label = TRUE) +
+  labs(title = stringr::str_wrap(
+    "Candidate Shape Feature Correlations Before Decorrelation", width = 50)
+  ) +
   theme(plot.title = element_text(size = 18, hjust = 0.2))
-)
 svg(glue("{outdir}/corr_before.svg", width = 16, height = 16))
 print(plt)
 invisible(dev.off())
 
 # Remove features based on above correlation plot
+# Naturally, unweighted and weighted versions of the same metric are highly
+# correlated. The differences in their distributions are negligible, so I will
+# choose the unweighted versions of these metrics as it is simpler.
+# Additionally, there is high correlation (~0.8 R^2) between radius of gyration
+# and length. Length is more intuitive to interpret, so I will keep length and
+# drop radius of gyration.
+mad_df <- mad_df |> select(-ends_with("_w"), -mad_log_rg_u)
 
 
 
 
+### Min-max normalise selected shape features and write to file -----------
 
+# Scale distributions such that minimum values equal 0 and maximum values 
+# equal 1.
+log_info("Min-max normalising selected shape features ...")
+min_max_norm <- function(v) {(v - min(v)) / (max(v) - min(v))}
+mad_df <- mad_df |> select(-taxon) |>
+  mutate(across(everything(), min_max_norm, .names = "scaled_{.col}"))
+
+# Merge back onto og_shape_df and write to file
+shape_df <- bind_cols(og_shape_df, mad_df) |>
+  select(taxon, uniprot, starts_with("scaled_"))
+write_csv(shape_df, glue("{outdir}/shape_features.csv"), col_names = TRUE)
+
+
+
+
+log_info("Done!")
 
