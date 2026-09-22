@@ -7,7 +7,7 @@
 # Taxon-Specific Datasets.
 
 
-script_dir <- "results/1_filter_proteins/"
+outdir <- "results/1_filter_proteins/"
 log_file <- "logs/1_filter_proteins.log"
 source("scripts/setup.R")
 configure_logger(log_file)
@@ -37,13 +37,13 @@ goslim_synapse <- read_tsv(
     "_", ":", basename(gsub("[<>]", "", go_id)))
   ) |>
   arrange(go_id) # Sort GO IDs
-write_csv(goslim_synapse, glue("{script_dir}/goslim_synapse_go_ids.csv"))
+write_csv(goslim_synapse, glue("{outdir}/goslim_synapse_go_ids.csv"))
 
 
 # Map synaptic GO IDs to ancestor GO IDs
 log_info("Mapping synaptic GO IDs to ancestor GO IDs ...")
 system("python scripts/map_synaptic_go_ancestors.py")
-ancestors <- fromJSON(glue("{script_dir}/synaptic_go_ancestors.json"))
+ancestors <- fromJSON(glue("{outdir}/synaptic_go_ancestors.json"))
 ancestor_df <- tibble::enframe( # unpack named list ancestors into tibble
   ancestors, name = "go_id", value = "ancestor_ids"
 )
@@ -68,8 +68,8 @@ done <- future_lapply(go_taxon_meta$destination, function (go_taxon_file) {
   
   # Extract taxon name from taxon-specific GO file and define output filenames
   taxon <- sub("\\.gaf.gz$", "", basename(go_taxon_file)) # e.g., worm
-  dest <- glue("{script_dir}/{taxon}.csv")
-  dest_uniprot_only <- glue("{script_dir}/{taxon}_uniprot_only.csv")
+  dest <- glue("{outdir}/{taxon}.csv")
+  dest_uniprot_only <- glue("{outdir}/{taxon}_uniprot_only.csv")
   
   # Read in taxon GO annotations present in taxon-specific GO file
   ann <- read_tsv(
