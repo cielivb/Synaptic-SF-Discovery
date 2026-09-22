@@ -76,6 +76,12 @@ draw_go_prevalence_props_hist(
 
 ### Create a taxa-normalised GO ID Jaccard Similarity matrix --------------
 
+jaccard <- function(x, y) {
+  intersection <- sum(x == 1 & y == 1)
+  union <- sum(x == 1 | y == 1)
+  return(intersection / union)
+}
+
 # Create raw Jaccard similarity matrices per taxa.
 # Per taxa similarity matrices are needed to average similarities across taxa.
 # An aggregate cross-taxa Jaccard similarity matrix constructed from the entire
@@ -85,11 +91,36 @@ draw_go_prevalence_props_hist(
 # will be averaged to give each taxon even weight.
 similarity_matrices <- future_lapply(taxa, function (taxon) {
   
+  taxon_matrix <- go_presence_matrix_f |> 
+    select(-taxon, -uniprot) |> filter(taxon == !!taxon)
   
+  # Get tibble containing Jaccard scores between each GO ID
+  j_scores <- lapply(colnames(taxon_matrix), function (go) {
+    # Compute Jaccard similarity between this GO ID's prevalence and other GO IDs
+    go_vec <- taxon_matrix[[go]] # Vector of 0 (absent) and 1 (present)
+    scores <- lapply(colnames(taxon_matrix), function (go_target) {
+      j_score <- jaccard(go_vec, taxon_matrix[[go_target]])
+      list(go_1 = go, go_2 = go_target, jaccard = j_score)
+    })
+    return(tibble(
+      go_1 = sapply(scores, `[[`, "go_1"),
+      go_2 = sapply(scores, `[[`, "go_2"),
+      jaccard = sapply(scores, `[[`, "jaccard")
+    ))
+  })
+  j_scores <- bind_rows(j_scores)
   
-  # Filter out 
+  # Transform tibble (go_1, go_2, jaccard) into matrix
+  jaccard_matrix <- j_scores |> 
+    pivot_wider(names_from = go_2, values_from = jaccard) |> 
+    tibble::column_to_rownames("go_1") |> as.matrix()
   
+  return(jaccard_matrix)
+
 })
+
+# Average the taxa-specific similarity matrices into a unified similarity matrix
+similarity_matrix <- Reduce("+", similarity_matrices) / length(similarity_matrices)
 
 
 
