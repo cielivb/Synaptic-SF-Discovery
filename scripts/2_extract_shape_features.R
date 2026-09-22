@@ -146,7 +146,34 @@ get_kurtosis <- function(radial_distances) {
 
 
 
-### Extract candidate shape features --------------------------------------
+### Define visualisation functions ----------------------------------------
+
+plot_features_species_violin <- function(df, title) {
+  
+  # Rotate df to get df with taxon, feature, and value columns
+  geom_long <- df |>
+    pivot_longer(cols = -taxon, names_to = "feature", values_to = "value")
+  
+  # Create violin plot
+  plt <- ggplot(geom_long, aes(x = taxon, y = value, fill = taxon)) +
+    geom_violin(trim = FALSE) +
+    stat_summary(fun = median, geom = "point", size = 1.5, color = "black") +
+    facet_grid(rows = vars(feature), scales = "free_y") +
+    labs(title = title) +
+    theme(strip.text.y = element_text(angle = 0))
+  
+  # Export violin plot
+  outfile <- glue("{outdir}/{clean_string(title)}.svg")
+  svg(outfile, width = 12, height = 18)
+  print(plt)
+  invisible(dev.off())
+
+}
+
+
+
+
+### Extract raw candidate shape features -----------------------------------
 
 
 # Extract shape data for each taxon in parallel
@@ -155,7 +182,7 @@ done <- future_lapply(afdb_taxon_meta$destination, function (afdb_taxon_tar) {
   
   
   taxon <- sub("\\.tar$", "", basename(afdb_taxon_tar)) # e.g., worm
-  geom_file <- glue("{outdir}/{taxon}_geom.csv")
+  shape_file <- glue("{outdir}/{taxon}_geom.csv")
   
   # Get .csv file per protein containing atom site coordinate + confidence data
   log_info(glue("Extracting {taxon} atom site data ..."))
@@ -184,7 +211,7 @@ done <- future_lapply(afdb_taxon_meta$destination, function (afdb_taxon_tar) {
     radial_distances_u <- get_radial_distances(pca_u$centred_coords)
     
     # Create tibble of protein shape metadata
-    geom_df <- tibble(
+    shape_df <- tibble(
       uniprot = sub("\\.csv$", "", basename(path)),
       mean_pLDDT = mean(residue_df$pLDDT),
       length_u = get_length_along_pc1(pca_u$pc_scores),
@@ -200,13 +227,46 @@ done <- future_lapply(afdb_taxon_meta$destination, function (afdb_taxon_tar) {
     )
     
     # Append protein shape metadata to csv
-    if (!file.exists(geom_file)) {
-      write_csv(geom_df, geom_file, append = FALSE, col_names = TRUE)
+    if (!file.exists(shape_file)) {
+      write_csv(shape_df, shape_file, append = FALSE, col_names = TRUE)
     } else {
-      write_csv(geom_df, geom_file, append = TRUE, col_names = FALSE)
+      write_csv(shape_df, shape_file, append = TRUE, col_names = FALSE)
     }
     
   })
   log_info(glue("Computed {taxon} protein shape data"))
 
 })
+
+
+
+
+### Correct for skew and normalise candidate shape features ---------------
+
+# Read in shape files for each taxon
+taxa <- c("fly", "human", "mouse", "rat", "worm", "zebrafish")
+og_shape_df <- bind_rows(lapply(taxa, function (taxon) {
+  shape_file <- glue("{outdir}/{taxon}_geom.csv")
+  taxon_df <- read_csv(shape_file, show_col_types = FALSE) |>
+    mutate(taxon = taxon)
+  return(taxon_df)
+}))
+shape_df <- og_shape_df |> select(-uniprot) # Temporarily remove uniprot column
+
+# Visualise candidate shape feature distributions before corrections
+plot_features_species_violin(
+  shape_df, "Candidate Shape Feature Distributions by Taxa (Raw)"
+)
+
+# Correct for skew in candidate shape features, then visualise
+
+
+
+
+
+
+
+
+
+
+
