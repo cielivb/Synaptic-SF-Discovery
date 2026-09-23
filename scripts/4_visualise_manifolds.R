@@ -41,7 +41,7 @@ df <- inner_join(shape_df, go_module_df, by = c("uniprot", "taxon"))
 ### Define manifold visualisation functions -------------------------------
 
 plot_manifold <- function (df, colour_by, colour_map) {
-  plt <- ggplot(df, aes(x = df$UMAP1, y = df$UMAP2)) + 
+  plt <- ggplot(df, aes(x = UMAP1, y = UMAP2)) + 
     theme_minimal(base_size = 14) +
     theme(
       axis.title.x = element_text(size = 10),
@@ -111,7 +111,9 @@ do_umap <- function (df, taxon, feature_space, colour_by=NULL, colour_map=NULL) 
     subset <- df |> filter(taxon == !!taxon) }
   
   # Keep row and column order consistent across runs, and drop non-feature cols
-  feature_cols <- sort(names(subset)[!names(subset) %in% c("uniprot", "taxon")])
+  feature_cols <- sort(names(subset)[
+    !names(subset) %in% c("uniprot", "taxon", "go_module_cluster", 
+                          "go_module_cluster_prob")])
   features <- subset |> arrange(uniprot) |> select(all_of(feature_cols))
 
   if (feature_space == "Shape") {
@@ -127,8 +129,9 @@ do_umap <- function (df, taxon, feature_space, colour_by=NULL, colour_map=NULL) 
   subset$UMAP1 <- umap_embedding[,1]
   subset$UMAP2 <- umap_embedding[,2]
   return(list(
-    plt = plot_manifold(subset, colour_by, colour_map), umapped_df = subset)
-  )
+    plt = plot_manifold(subset, colour_by, colour_map), 
+    umapped_df = subset
+  ))
 }
 
 
@@ -185,7 +188,7 @@ df_to_cluster <- umapped_dfs[["cross-taxa_GO Module Scores"]]
 hdb <- hdbscan(df_to_cluster |> select(UMAP1, UMAP2), minPts = 5)
 df_to_cluster$go_module_cluster <- hdb$cluster # cluster 0 = noise
 df_to_cluster$go_module_cluster_prob <- hdb$membership_prob
-df <- inner_join(df, df_to_cluster, by = c("taxon", "uniprot")) |>
+df <- inner_join(df, df_to_cluster) |>
   select(-UMAP1, -UMAP2) # drop umap coordinate columns
 
 # Visualise cross-taxa GO module score cluster membership probabilities to
@@ -213,7 +216,6 @@ plots <- list()
 umapped_dfs <- list()
 for (t in taxa) {
   for (s in feature_spaces) {
-    umap_input_df <- df |> select(-go_module_cluster, -go_module_cluster_prob)
     umap_result <- do_umap(
       df, t, s, colour_by = "go_module_cluster", colour_map = colour_map
     )
