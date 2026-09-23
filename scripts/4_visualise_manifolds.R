@@ -275,37 +275,36 @@ print(plt)
 invisible(dev.off())
 
 # Isolate large coarse cluster - it has the most proteins
-large_coarse_cluster_proteins <- df_to_cluster |>
+large_coarse_cluster_protein_df <- df_to_cluster |>
   add_count(coarse_ct_sf_cluster, name = "coarse_cluster_size") |>
   filter(coarse_cluster_size == max(coarse_cluster_size)) |>
   select(-coarse_cluster_size)
 log_info("Protein counts per coarse cluster in cross-taxa shape-func manifold:")
-print(df_to_cluster |> count(coarse_ct_sf_cluster))
+print(large_coarse_cluster_protein_df |> count(coarse_ct_sf_cluster))
 
 # Run UMAP on large coarse cluster alone, including GO Module cluster colourmap
-umap_result <- do_umap(
-  large_coarse_cluster_proteins, "cross-taxa", "Shape\n+\nGO Module Scores",
+subdf_umap_result <- do_umap(
+  large_coarse_cluster_protein_df, "cross-taxa", "Shape\n+\nGO Module Scores",
   colour_by = "go_module_cluster", colour_map = colour_map
 )
-large_cluster_embedding_plt <- umap_result[["plt"]]
+large_cluster_embedding_plt <- subdf_umap_result[["plt"]]
 svg(glue("{outdir}/ct_sf_large_cluster_umap.svg"), width = 8, height = 8)
 print(large_cluster_embedding_plt)
 invisible(dev.off())
-str(umap_results[["umapped_df"]])
+str(umap_result[["umapped_df"]])
 
 # Run HDBSCAN on large cluster UMAP embedding to isolate "fine" clusters
-df_to_cluster <- umap_result[["umapped_df"]] |> select(UMAP1, UMAP2)
-hdb <- hdbscan(df_to_cluster, minPts = 10)
-df_to_cluster$fine_ct_sf_cluster <- hdb$cluster # cluster 0 = noise
-df_to_cluster$fine_ct_sf_cluster_prob <- hdb$membership_prob
+subdf_to_cluster <- subdf_umap_result[["umapped_df"]]
+hdb <- hdbscan(subdf_to_cluster |> select(UMAP1, UMAP2), minPts = 10)
+subdf_to_cluster$fine_ct_sf_cluster <- hdb$cluster # cluster 0 = noise
+subdf_to_cluster$fine_ct_sf_cluster_prob <- hdb$membership_prob
 
 log_info("Protein counts per fine cluster in large coarse cluster:")
-print(df_to_cluster |> count(fine_ct_sf_cluster))
-str(df_to_cluster)
+print(subdf_to_cluster |> count(fine_ct_sf_cluster))
 
 # Visualise fine clusters on large cluster UMAP embedding
 log_info("making colour map ...")
-fine_clusters <- as.character(levels(factor(df_to_cluster$fine_ct_sf_cluster)))
+fine_clusters <- levels(factor(subdf_to_cluster$fine_ct_sf_cluster))
 cm_fine_clusters <- c(
   "0" = "grey", # 0 = noise
   setNames(
@@ -314,18 +313,16 @@ cm_fine_clusters <- c(
   )
 )
 log_info("made colour map")
-str(df_to_cluster)
-umap_result <- do_umap(
-  df_to_cluster, "cross-taxa", "Shape\n+\nGO Module Scores",
-  colour_by = "fine_ct_sf_cluster", colour_map = cm_fine_clusters
-)
 svg(glue("{outdir}/ct_sf_large_cluster_fine_clusters.svg"), width = 8, height=8)
-print(umap_result[["plt"]])
+print(do_umap(
+  subdf_to_cluster, "cross-taxa", "Shape\n+\nGO Module Scores",
+  colour_by = "fine_ct_sf_cluster", colour_map = cm_fine_clusters
+))
 invisible(dev.off())
 
 # Visualise cluster membership probabilities to assess fine clustering confidence
 svg(glue("{outdir}/ct_sf_fine_cluster_probs.svg"), width = 12, height = 12)
-plt <- ggplot(df_to_cluster, aes(fine_ct_sf_cluster_prob)) +
+plt <- ggplot(subdf_to_cluster, aes(fine_ct_sf_cluster_prob)) +
   geom_histogram(binwidth = 0.05) +
   labs(title = glue(
     "HDBSCAN Cross-Taxa Shape + GO Module Score Fine Cluster Probabilities"
