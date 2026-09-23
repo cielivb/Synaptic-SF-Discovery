@@ -1,8 +1,6 @@
 # Visualise shape, function, and shape+function manifolds both within and across
 # taxa, then run HDBSCAN on the manifold with the most structure.
 
-# 7x3 grid of images.
-
 
 outdir <- "results/4_visualise_manifolds"
 log_file <- "logs/4_visualise_manifolds.log"
@@ -17,6 +15,7 @@ library(uwot)
 set.seed(254)
 taxa <- c("human", "mouse", "rat", "fly", "worm", "zebrafish", "cross-taxa")
 feature_spaces <- c("Shape", "GO Module Scores", "Shape\n+\nGO Module Scores")
+
 
 
 
@@ -175,7 +174,7 @@ invisible(dev.off())
 
 
 ### Cluster cross-taxa GO module scores then recreate grid plot, colouring
-# proteins by cross-taxa GO module score cluster membership.
+# proteins by cross-taxa GO module score cluster membership. --------------
 
 # This will provide evolutionary functional insight and help determine whether 
 # it is worth investigating the large cross-taxa shape-function cluster's
@@ -185,7 +184,7 @@ log_info("Clustering proteins by cross-taxa GO module scores ...")
 
 # Assign cross-taxa GO module score clusters to each protein
 df_to_cluster <- umapped_dfs[["cross-taxa_GO Module Scores"]]
-hdb <- hdbscan(df_to_cluster |> select(UMAP1, UMAP2), minPts = 5)
+hdb <- hdbscan(df_to_cluster |> select(UMAP1, UMAP2), minPts = 10)
 df_to_cluster$go_module_cluster <- hdb$cluster # cluster 0 = noise
 df_to_cluster$go_module_cluster_prob <- hdb$membership_prob
 df <- inner_join(df, df_to_cluster) |>
@@ -247,7 +246,47 @@ invisible(dev.off())
 
 
 
-###
+
+### Inspect UMAP embedding for large cross-taxa shape+func cluster alone --
+
+# The coloured grid plot shows there is functional substructure within this
+# large cluster, but it is a bit difficult to see clearly, likely due to the
+# other more extreme clusters in shape+function space. It is worth inspecting
+# this large cluster and plotting it side-by-side with its original manifold.
+
+# Use HDBSCAN to discover "coarse" / top-level clusters
+df_to_cluster <- do_umap(
+  df, "cross_taxa", "Shape\n+\nGO Module Scores"
+)[["umapped_df"]]
+
+hdb <- hdbscan(df_to_cluster |> select(UMAP1, UMAP2), minPts = 10)
+df_to_cluster$coarse_ct_sf_cluster <- hdb$cluster # cluster 0 = noise
+df_to_cluster$coarse_ct_sf_cluster_prob <- hdb$membership_prob
+
+
+# Isolate large coarse cluster and confirm correct cluster visually. The large 
+# coarse cluster has the most proteins.
+
+
+# Visualise cluster membership probabilities to assess clustering confidence
+svg(glue("{outdir}/ct_sf_coarse_cluster_probs.svg"), width = 12, height = 12)
+plt <- ggplot(df, aes(coarse_ct_sf_cluster_prob)) +
+  geom_histogram(binwidth = 0.05) +
+  labs(title = glue(
+    "HDBSCAN Cross-Taxa Shape + GO Module Score Coarse Cluster Probabilities"
+  ))
+print(plt)
+invisible(dev.off())
+svg(glue("{outdir}/ct_sf_fine_cluster_probs.svg"), width = 12, height = 12)
+plt <- ggplot(df, aes(fine_ct_sf_cluster_prob)) +
+  geom_histogram(binwidth = 0.05) +
+  labs(title = glue(
+    "HDBSCAN Cross-Taxa Shape + GO Module Score Fine Cluster Probabilities"
+  ))
+print(plt)
+invisible(dev.off())
+
+
 
 
 log_info("Done!")
