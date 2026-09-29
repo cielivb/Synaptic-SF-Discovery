@@ -277,9 +277,8 @@ write_csv(df_to_cluster, glue("{outdir}/clustered_by_gms.csv"), col_names = TRUE
 
 
 # Create GO Module Score cluster membership colourmap
-go_module_clusters <- levels(factor(df$go_module_cluster))
-print(df |> filter(go_module_cluster == 0) |> count())
-if (0 %in% go_module_clusters) { # grey out noise points if present
+go_module_clusters <- levels(factor(sorted(df$go_module_cluster)))
+if (0 %in% go_module_clusters) { # grey out noise points only if present
   colour_map <- c(
     "0" = "grey",
     setNames(
