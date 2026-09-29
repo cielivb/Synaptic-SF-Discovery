@@ -68,14 +68,35 @@ plot_gms_cluster_evo <- function () {
 
 ### Define core visual summary functions ----------------------------------
 
-# Create parallel coordinates plot showing shape features of proteins in a GMS 
-# cluster, where lines are styled by taxon
-make_shape_plot <- function (cluster_id, cluster_df, outdir, styles) {
-  # Create base plot (no titles, legends etc)
-  ... # TODO
-  # Write full plot (standalone plot with titles etc)
-  # Return base plot
+make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
+  
+  # Build full plot
+  full_plt <- ggparcoord(cluster_df,
+    columns = starts_with("scaled_"), groupColumn = "taxon",
+    order = "anyClass", showPoints = TRUE, alphaLines = 0.3
+  ) +
+    scale_linetype_manual(values = styles$taxa) +
+    labs(
+      title = glue("Protein Shapes (GMS Cluster {cluster_id})"), 
+      linetype = "Taxon",
+    ) +
+    theme_ipsum() +
+    theme(
+      plot.title = element_text(size = 10)
+    )
+  
+  # Write full plot to file
+  svg(glue("{outdir}/gms_{cluster_id}_protein_shapes.svg"), width=12, height=8)
+  print(full_plt)
+  invisible(dev.off())
+  
+  # Create and return base plot (renamed title) for comparative patchwork grid
+  base_plt <- full_plt +
+    labs(title = glue("GMS Cluster {cluster_id}"))
+  return(base_plt)
+  
 }
+
 
 # Create GO graph showing most common GO IDs in GMS cluster, where GO IDs are
 # coloured by their associated GO module
