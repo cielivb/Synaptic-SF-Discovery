@@ -2,8 +2,8 @@
 # taxa, then run HDBSCAN on the manifold with the most structure.
 
 
-outdir <- "results/4_visualise_manifolds"
-log_file <- "logs/4_visualise_manifolds.log"
+outdir <- "results/4_cluster_by_gms"
+log_file <- "logs/4_cluster_by_gms.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 
@@ -167,7 +167,7 @@ get_2x7_grid_layout <- function () {
 get_umap_embedding <- function (features) {
   set.seed(254)
   umap(
-    features, n_neighbors = 20, min_dist = 0.6,
+    features, n_neighbors = 12, min_dist = 0.1,
     n_components = 2, metric = "euclidean",
     init = "pca", spread = 3
   )
@@ -278,12 +278,21 @@ write_csv(df_to_cluster, glue("{outdir}/clustered_by_gms.csv"), col_names = TRUE
 
 # Create GO Module Score cluster membership colourmap
 go_module_clusters <- levels(factor(df$go_module_cluster))
-colour_map <- c("0" = "grey", # 0 = noise
-  setNames(
-    scales::hue_pal()(length(go_module_clusters) - 1),
-    go_module_clusters[go_module_clusters != "0"]
+print(df |> filter(go_module_cluster == 0) |> count())
+if (0 %in% go_module_clusters) { # grey out noise points if present
+  colour_map <- c(
+    "0" = "grey",
+    setNames(
+      scales::hue_pal()(length(go_module_clusters) - 1),
+      go_module_clusters[go_module_clusters != 0]
+    )
   )
-)
+} else {
+  colour_map <- setNames(
+    scales::hue_pal()(length(go_module_clusters)),
+    go_module_clusters
+  )
+}
 
 # Recreate grid plot, colouring proteins by GO Module Score Cluster membership
 plots <- list()
