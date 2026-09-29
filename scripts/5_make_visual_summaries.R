@@ -43,16 +43,18 @@ go_module_colour_map <- setNames(
   viridis::viridis(length(go_modules)), go_modules
 )
 
-# Define taxon line style map
+# Define taxon line style map and colour map
 taxa <- levels(factor(sorted(df$taxon)))
 taxa_line_style_map <- setNames(
   c("solid", "dashed", "dotted", "dotdash", "longdash", "twodash"), taxa
 )
+# TODO: taxa colour map
 
 STYLES = list(
   gms_cluster = gms_cluster_colour_map,
   go_module = go_module_colour_map,
-  taxa = taxa_line_style_map
+  taxa_line = taxa_line_style_map,
+  taxa_colour = taxa_colour_map
 )
 
 
@@ -68,6 +70,8 @@ plot_gms_cluster_evo <- function () {
 
 ### Define core visual summary functions ----------------------------------
 
+# Create parallel coordinates plot showing shape features of proteins in a GMS 
+# cluster, where lines are styled by taxon
 make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
   
   # Build full plot
@@ -75,10 +79,11 @@ make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
     columns = starts_with("scaled_"), groupColumn = "taxon",
     order = "anyClass", showPoints = TRUE, alphaLines = 0.3
   ) +
-    scale_linetype_manual(values = styles$taxa) +
+    scale_linetype_manual(values = styles$taxa_line) +
+    scale_colour_manual(values = styles$taxa_colour)
     labs(
       title = glue("Protein Shapes (GMS Cluster {cluster_id})"), 
-      linetype = "Taxon",
+      linetype = "Taxon", color = "Taxon"
     ) +
     theme_ipsum() +
     theme(
@@ -104,17 +109,61 @@ make_go_graph_plot <- function (cluster_id, cluster_df, outdir, styles) {
   ... # TODO
 }
 
+
 # Create horizontal single-column stacked bar plot showing proportion of proteins 
 # represented by each taxon present in GMS cluster (e.g., 10% of proteins in 
 # GMS cluster are human proteins)
-make_prop_repr_plot <- function (cluster_id, cluster_df, outdir, styles) {
-  ... # TODO
+make_prop_repr_plot <- function(cluster_id, cluster_df, outdir, styles) {
+  
+  # Get proportion of proteins in cluster associated with each taxon
+  prop_df <- cluster_df |> count(taxon) |> mutate(prop = n / sum(n))
+  
+  # Build full plot - aes(x=1) makes stacked
+  full_plt <- ggplot(prop_df, aes(x = 1, y = prop, fill = taxon)) +
+    geom_col(width = 0.6, color = "black") +
+    coord_flip() + # make horizontal
+    scale_fill_manual(values = styles$taxa_colors) +
+    labs(
+      title = glue("Taxon Representation (GMS Cluster {cluster_id})"),
+      x = NULL, y = "Proportion", fill = "Taxon"
+    ) +
+    theme_ipsum() +
+    theme(
+      axis.text.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      plot.title = element_text(size = 12)
+    )
+  
+  # Write full plot to file
+  svg(glue("{outdir}/gms_{cluster_id}_prop_repr.svg"), width = 12, height = 8)
+  print(full_plt)
+  invisible(dev.off())
+  
+  # Create and return base plot (renamed title) for comparative patchwork grid
+  base_plt <- full_plt +
+    labs(title = glue("GMS Cluster {cluster_id}"))
+  return(base_plt)
+
 }
+
+
 
 # Create vertical bar plot showing proportion of proteins within each taxa
 # that are assigned to this GMS cluster
 make_prop_ded_plot <- function (cluster_id, cluster_df, outdir, styles) {
-  ... # TODO
+  
+  # Build full plot
+  full_plt <- ... # TODO
+  
+  # Write full plot to file
+  svg(glue("{outdir}/gms_{cluster_id}_prop_ded.svg"), width=12, height=8)
+  print(full_plt)
+  invisible(dev.off())
+  
+  # Create and return base plot (renamed title) for comparative patchwork grid
+  base_plt <- ... # TODO
+  return(base_plt)
+  
 }
 
 
