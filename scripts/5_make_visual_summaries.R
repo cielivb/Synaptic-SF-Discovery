@@ -8,6 +8,8 @@ configure_logger(log_file)
 
 library(ggplot2)
 library(GGally)
+library(tidyr)
+set.seed(254)
 
 
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
@@ -22,11 +24,11 @@ df <- read_csv(
 ### Define global plot styling --------------------------------------------
 
 # Define GMS cluster colour map
-gms_clusters <- levels(factor(sorted(df$gms_cluster)))
+gms_clusters <- levels(factor(sort(df$gms_cluster)))
 if (0 %in% gms_clusters) { # grey out noise points only if present
   gms_cluster_colour_map <- c( "0" = "grey", # noise GMS "cluster"
     setNames(
-      scales::hue_pal()(length(go_module_clusters) - 1),
+      scales::hue_pal()(length(gms_clusters) - 1),
       gms_clusters[gms_clusters != 0]
     )
   )
@@ -44,13 +46,13 @@ go_module_colour_map <- setNames(
 )
 
 # Define taxon line style map and colour map
-taxa <- levels(factor(sorted(df$taxon)))
-taxa_line_style_map <- setNames(
-  c("solid", "dashed", "dotted", "dotdash", "longdash", "twodash"), taxa
+taxa_line_style_map <- c(
+  human = "dotted", mouse = "dotdash", rat = "solid",
+  fly = "dashed", worm = "longdash", zebrafish = "twodash"
 )
 taxa_colour_map <- c(
-  human = "#E69F00", mouse = "#56B4E9", rat = "#009E73",
-  fly = "#D55E00", worm = "#CC79A7", zebrafish  = "#F0E442"
+  human = "#D55E00", mouse = "#E69F00", rat = "#F0E442",
+  fly = "#009E73", worm = "#56B4E9", zebrafish = "#CC79A7"
 )
 
 STYLES = list(
@@ -77,20 +79,27 @@ plot_gms_cluster_evo <- function () {
 # cluster, where lines are styled by taxon
 make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
   
+  cols <- which(startsWith(names(cluster_df), "scaled_"))
+  present_taxa <- unique(cluster_df$taxon)
+  line_map <- styles$taxa_line[present_taxa]
+  colour_map <- styles$taxa_colour[present_taxa]
+  
   # Build full plot
   full_plt <- ggparcoord(cluster_df,
-    columns = starts_with("scaled_"), groupColumn = "taxon",
-    order = "anyClass", showPoints = TRUE, alphaLines = 0.3
+    columns = cols, groupColumn = "taxon",
+    scale = "uniminmax", showPoints = TRUE, alphaLines = 0.3,
+    mapping = aes(linetype = taxon), boxplot = TRUE,
   ) +
-    scale_linetype_manual(values = styles$taxa_line) +
-    scale_colour_manual(values = styles$taxa_colour)
+    scale_linetype_manual(values = line_map) +
+    scale_colour_manual(values = colour_map) +
     labs(
       title = glue("Protein Shapes (GMS Cluster {cluster_id})"), 
+      x = "Protein Shape Feature", y = "",
       linetype = "Taxon", color = "Taxon"
     ) +
-    theme_ipsum() +
+    theme_classic() +
     theme(
-      plot.title = element_text(size = 10)
+      plot.title = element_text(size = 10, hjust = 0.5)
     )
   
   # Write full plot to file
@@ -109,7 +118,7 @@ make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
 # Create GO graph showing most common GO IDs in GMS cluster, where GO IDs are
 # coloured by their associated GO module
 make_go_graph_plot <- function (cluster_id, cluster_df, outdir, styles) {
-  ... # TODO
+  NULL # TODO
 }
 
 
@@ -130,11 +139,11 @@ make_prop_repr_plot <- function(cluster_id, cluster_df, outdir, styles) {
       title = glue("Taxon Representation (GMS Cluster {cluster_id})"),
       x = NULL, y = "Proportion", fill = "Taxon"
     ) +
-    theme_ipsum() +
+    theme_classic() +
     theme(
       axis.text.y = element_blank(),
       axis.ticks.y = element_blank(),
-      plot.title = element_text(size = 12)
+      plot.title = element_text(size = 12, hjust = 0.5)
     )
   
   # Write full plot to file
@@ -165,15 +174,20 @@ make_perc_ded_plot <- function(cluster_id, cluster_df, df, outdir, styles) {
   
   # Build full plot
   full_plt <- ggplot(perc_df, aes(x = taxon, y = perc, fill = taxon)) +
+    geom_text(
+      aes(label = sprintf("%d%%", round(perc))), # print rounded perc
+      size = 3.5, vjust = -0.5, # move % text above the bar
+    ) +
     geom_col(width = 0.7, color = "black") +
     scale_fill_manual(values = styles$taxa_colour) +
+    scale_y_continuous(limits = c(0, 100)) +
     labs(
       title = glue(
         "Percentage of Taxon Proteins Assigned to GMS Cluster {cluster_id}"
       ),
       x = "Taxon", y = "Percentage of Taxon Proteins", fill = "Taxon"
     ) +
-    theme_ipsum() +
+    theme_classic() +
     theme(
       plot.title = element_text(size = 12),
       axis.text.x = element_text(angle = 45, hjust = 1)
@@ -197,7 +211,7 @@ make_perc_ded_plot <- function(cluster_id, cluster_df, df, outdir, styles) {
 ### Create "dictionaries" of cluster summary plots, keyed by GMS cluster ID,
 # then by plot type
 get_plots <- function(df) { 
-  gms_clusters <- unique(sorted(df$gms_cluster))
+  gms_clusters <- unique(sort(df$gms_cluster))
   plots_list <- future_lapply(
     gms_clusters,
     function(cluster_id, df, outdir, styles) {
@@ -249,7 +263,9 @@ make_plots <- function (df) {
 ### MAIN ------------------------------------------------------------------
 
 main <- function () {
+  log_info("Making main plot ...")
   plot_gms_cluster_evo()
+  log_info("Making grid plots ...")
   make_plots(df)
 }
 

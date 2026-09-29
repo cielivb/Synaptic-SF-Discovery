@@ -182,7 +182,7 @@ do_umap <- function (df, taxon, feature_space, colour_by=NULL, colour_map=NULL) 
   # Keep row and column order consistent across runs, and drop non-feature cols
   feature_cols <- sort(names(subset)[
     !names(subset) %in% c(
-      "uniprot", "taxon", "go_module_cluster", "go_module_cluster_prob",
+      "uniprot", "taxon", "gms_cluster", "gms_cluster_prob",
       "fine_ct_sf_cluster", "fine_ct_sf_cluster_prob", "coarse_ct_sf_cluster",
       "coarse_ct_sf_cluster_prob")])
   features <- subset |> arrange(uniprot) |> select(all_of(feature_cols))
@@ -257,8 +257,8 @@ log_info("Clustering proteins by cross-taxa GO module scores ...")
 # Assign cross-taxa GO module score clusters to each protein
 df_to_cluster <- umapped_dfs[["cross-taxa_GO Module Scores"]]
 hdb <- hdbscan(df_to_cluster |> select(UMAP1, UMAP2), minPts = 10)
-df_to_cluster$go_module_cluster <- hdb$cluster # cluster 0 = noise
-df_to_cluster$go_module_cluster_prob <- hdb$membership_prob
+df_to_cluster$gms_cluster <- hdb$cluster # cluster 0 = noise
+df_to_cluster$gms_cluster_prob <- hdb$membership_prob
 df <- inner_join(df, df_to_cluster) |>
   select(-UMAP1, -UMAP2) # drop umap coordinate columns
 
@@ -266,7 +266,7 @@ df <- inner_join(df, df_to_cluster) |>
 # quickly assess clustering confidence
 svg(glue("{outdir}/cross_taxa_go_module_score_cluster_membership_probs.svg"),
     width = 12, height = 12)
-plt <- ggplot(df, aes(go_module_cluster_prob)) +
+plt <- ggplot(df, aes(gms_cluster_prob)) +
   geom_histogram(binwidth = 0.05) +
   labs(title = glue("HDBSCAN Cross-Taxa GO Module Score Cluster Probabilities"))
 print(plt)
@@ -277,19 +277,19 @@ write_csv(df_to_cluster, glue("{outdir}/clustered_by_gms.csv"), col_names = TRUE
 
 
 # Create GO Module Score cluster membership colourmap
-go_module_clusters <- levels(factor(sorted(df$go_module_cluster)))
-if (0 %in% go_module_clusters) { # grey out noise points only if present
+gms_clusters <- levels(factor(sort(df$gms_cluster)))
+if (0 %in% gms_clusters) { # grey out noise points only if present
   colour_map <- c(
     "0" = "grey",
     setNames(
-      scales::hue_pal()(length(go_module_clusters) - 1),
-      go_module_clusters[go_module_clusters != 0]
+      scales::hue_pal()(length(gms_clusters) - 1),
+      gms_clusters[gms_clusters != 0]
     )
   )
 } else {
   colour_map <- setNames(
-    scales::hue_pal()(length(go_module_clusters)),
-    go_module_clusters
+    scales::hue_pal()(length(gms_clusters)),
+    gms_clusters
   )
 }
 
@@ -299,7 +299,7 @@ umapped_dfs <- list()
 for (t in taxa) {
   for (s in c("Shape", "GO Module Scores")) {
     umap_result <- do_umap(
-      df, t, s, colour_by = "go_module_cluster", colour_map = colour_map
+      df, t, s, colour_by = "gms_cluster", colour_map = colour_map
     )
     plots[[glue("{t}_{s}")]] <- umap_result[["plt"]]
     umapped_dfs[[glue("{t}_{s}")]] <- umap_result[["umapped_df"]]
