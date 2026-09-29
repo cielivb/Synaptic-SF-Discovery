@@ -39,32 +39,74 @@ df <- inner_join(shape_df, go_module_df, by = c("uniprot", "taxon"))
 
 ### Define manifold visualisation functions -------------------------------
 
-plot_manifold <- function (df, colour_by, colour_map) {
-  plt <- ggplot(df, aes(x = UMAP1, y = UMAP2)) + 
+plot_manifold <- function (df, taxon, colour_by, colour_map) {
+  
+  # Define consistent shapes for cross-taxa plots
+  taxon_shapes <- c(
+    "human" = 16, # circle
+    "mouse" = 15, # square
+    "rat" = 17, # triangle
+    "fly" = 18, # diamond
+    "worm" = 8, # star
+    "zebrafish" = 4 # cross
+  )
+  
+  plt <- ggplot(df, aes(x = UMAP1, y = UMAP2)) +
     theme_minimal(base_size = 14) +
     theme(
       axis.title.x = element_text(size = 10),
       axis.title.y = element_text(size = 10),
-      panel.grid.major = element_blank(), # Remove major gridlines
-      panel.grid.minor = element_blank(), # Remove minor gridlines
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
       axis.line = element_line(color = "black", linewidth = 0.4)
     )
-  if (is.null(colour_by)) {
-    plt <- plt + geom_point(
-      alpha = 0.7, size = 2,
-      position = position_jitter(width = 0.1, height = 0.1)
-    )
-  } else {
-    plt <- plt + geom_point(
-        aes(color = factor(.data[[colour_by]])),
-        alpha = 0.7, size = 2,
-        position = position_jitter(width = 0.1, height = 0.1)
-      ) +
-      scale_color_manual(name = colour_by, values = colour_map) +
-      guides(color = "none") # hide legend
+  
+  if (is.null(colour_by)) { # No colour mapping
+    if (taxon == "cross-taxa") { # Draw taxa-coded point shapes
+      plt <- plt +
+        geom_point(
+          aes(shape = factor(taxon)),
+          alpha = 0.7, size = 2,
+          position = position_jitter(width = 0.1, height = 0.1)
+        ) +
+        scale_shape_manual(values = taxon_shapes) +
+        guides(shape = "none")
+    } else { # Draw basic point shape
+      plt <- plt +
+        geom_point(
+          alpha = 0.7, size = 2,
+          position = position_jitter(width = 0.1, height = 0.1)
+        )
+    }
+  } else { # Colour mapping
+    if (taxon == "cross-taxa") { # Draw taxa-coded and custom coloured points
+      plt <- plt +
+        geom_point(
+          aes(
+            color = factor(.data[[colour_by]]),
+            shape = factor(taxon)
+          ),
+          alpha = 0.7, size = 2,
+          position = position_jitter(width = 0.1, height = 0.1)
+        ) +
+        scale_color_manual(name = colour_by, values = colour_map) +
+        scale_shape_manual(values = taxon_shapes) +
+        guides(color = "none", shape = "none")
+    } else { # Draw basic point shapes with custom colour map
+      plt <- plt +
+        geom_point(
+          aes(color = factor(.data[[colour_by]])),
+          alpha = 0.7, size = 2,
+          position = position_jitter(width = 0.1, height = 0.1)
+        ) +
+        scale_color_manual(name = colour_by, values = colour_map) +
+        guides(color = "none")
+    }
   }
+  
   return(plt)
 }
+
 
 get_3x7_grid_layout <- function () {
   col_labels <- lapply(feature_spaces, function(s) {
@@ -83,6 +125,34 @@ get_3x7_grid_layout <- function () {
     area(6, 1, 6, 1), area(7, 1, 7, 1), area(8, 1, 8, 1),
     
     area(2, 2, 8, 4) # Manifold plots grid
+  )
+  return(
+    list(col_labels = col_labels, row_labels = row_labels, design = design)
+  )
+}
+
+get_2x7_grid_layout <- function () {
+  col_labels <- lapply(c("Shape", "GO Module Scores"), function(s) {
+    ggplot() + annotate("text", x = 0.5, y = 0.5, label = s, size = 6) +
+      theme_void()
+  })
+  row_labels <- lapply(taxa, function(t) {
+    ggplot() + annotate("text", x = 0.5, y = 0.5, label = t, size = 5) +
+      theme_void()
+  })
+  design <- c(
+    # Column labels (row 1, columns 2 and 3)
+    area(1, 2, 1, 2), area(1, 3, 1, 3),
+    
+    # Row labels (rows 2–8, column 1)
+    area(2, 1, 2, 1), area(3, 1, 3, 1),
+    area(4, 1, 4, 1), area(5, 1, 5, 1),
+    area(6, 1, 6, 1), area(7, 1, 7, 1),
+    area(8, 1, 8, 1),
+    
+    # Plot grid (rows 2–8, columns 2–3)
+    # (area(top_row, left_col, bottom_row, right_col))
+    area(2, 2, 8, 3)
   )
   return(
     list(col_labels = col_labels, row_labels = row_labels, design = design)
@@ -111,8 +181,10 @@ do_umap <- function (df, taxon, feature_space, colour_by=NULL, colour_map=NULL) 
   
   # Keep row and column order consistent across runs, and drop non-feature cols
   feature_cols <- sort(names(subset)[
-    !names(subset) %in% c("uniprot", "taxon", "go_module_cluster", 
-                          "go_module_cluster_prob")])
+    !names(subset) %in% c(
+      "uniprot", "taxon", "go_module_cluster", "go_module_cluster_prob",
+      "fine_ct_sf_cluster", "fine_ct_sf_cluster_prob", "coarse_ct_sf_cluster",
+      "coarse_ct_sf_cluster_prob")])
   features <- subset |> arrange(uniprot) |> select(all_of(feature_cols))
 
   if (feature_space == "Shape") {
@@ -128,7 +200,7 @@ do_umap <- function (df, taxon, feature_space, colour_by=NULL, colour_map=NULL) 
   subset$UMAP1 <- umap_embedding[,1]
   subset$UMAP2 <- umap_embedding[,2]
   return(list(
-    plt = plot_manifold(subset, colour_by, colour_map), 
+    plt = plot_manifold(subset, taxon, colour_by, colour_map), 
     umapped_df = subset
   ))
 }
@@ -200,6 +272,9 @@ plt <- ggplot(df, aes(go_module_cluster_prob)) +
 print(plt)
 invisible(dev.off())
 
+# Write clusters to file
+write_csv(df_to_cluster, glue("{outdir}/clustered_by_gms.csv"), col_names = TRUE)
+
 
 # Create GO Module Score cluster membership colourmap
 go_module_clusters <- levels(factor(df$go_module_cluster))
@@ -214,7 +289,7 @@ colour_map <- c("0" = "grey", # 0 = noise
 plots <- list()
 umapped_dfs <- list()
 for (t in taxa) {
-  for (s in feature_spaces) {
+  for (s in c("Shape", "GO Module Scores")) {
     umap_result <- do_umap(
       df, t, s, colour_by = "go_module_cluster", colour_map = colour_map
     )
@@ -223,10 +298,10 @@ for (t in taxa) {
   }
 }
 ordered_keys <- unlist(
-  lapply(taxa, function(t) paste(t, feature_spaces, sep = "_")))
+  lapply(taxa, function(t) paste(t, c("Shape", "GO Module Scores"), sep = "_")))
 ordered_plots <- plots[ordered_keys]
-grid_plt <- wrap_plots(ordered_plots, nrow = 7, ncol = 3)
-layout <- get_3x7_grid_layout()
+grid_plt <- wrap_plots(ordered_plots, nrow = 7, ncol = 2)
+layout <- get_2x7_grid_layout()
 go_cluster_coloured_manifolds_plt <- wrap_plots(
   c(layout[["col_labels"]], layout[["row_labels"]], list(grid_plt)), 
   design = layout[["design"]]
@@ -234,7 +309,10 @@ go_cluster_coloured_manifolds_plt <- wrap_plots(
   plot_annotation(
     title = "UMAP Manifolds Across Taxa and Feature Spaces",
     subtitle = "Proteins Coloured by Cross-Taxa GO Module Score Cluster Membership",
-    theme = theme(plot.title = element_text(size = 20, hjust = 0.5))
+    theme = theme(
+      plot.title = element_text(size = 20, hjust = 0.5),
+      plot.subtitle = element_text(size = 14, hjust = 0.5)
+    )
   )
 
 svg(glue(
@@ -247,103 +325,7 @@ invisible(dev.off())
 
 
 
-### Inspect UMAP embedding for large cross-taxa shape+func cluster alone --
-
-# The coloured grid plot shows there is functional substructure within this
-# large cluster, but it is a bit difficult to see clearly, likely due to the
-# other more extreme clusters in shape+function space. It is worth inspecting
-# this large cluster and plotting it side-by-side with its original manifold.
-
-log_info("Inspecting large cross-taxa shape-func cluster ...")
-
-# Use HDBSCAN to discover "coarse" / top-level clusters
-df_to_cluster <- do_umap(
-  df, "cross-taxa", "Shape\n+\nGO Module Scores"
-)[["umapped_df"]]
-hdb <- hdbscan(df_to_cluster |> select(UMAP1, UMAP2), minPts = 10)
-df_to_cluster$coarse_ct_sf_cluster <- hdb$cluster # cluster 0 = noise
-df_to_cluster$coarse_ct_sf_cluster_prob <- hdb$membership_prob
-
-# Visualise cluster membership probabilities to assess coarse clustering confidence
-svg(glue("{outdir}/ct_sf_coarse_cluster_probs.svg"), width = 12, height = 12)
-plt <- ggplot(df_to_cluster, aes(coarse_ct_sf_cluster_prob)) +
-  geom_histogram(binwidth = 0.05) +
-  labs(title = glue(
-    "HDBSCAN Cross-Taxa Shape + GO Module Score Coarse Cluster Probabilities"
-  ))
-print(plt)
-invisible(dev.off())
-
-# Isolate large coarse cluster - it has the most proteins
-large_coarse_cluster_protein_df <- df_to_cluster |>
-  add_count(coarse_ct_sf_cluster, name = "coarse_cluster_size") |>
-  filter(coarse_cluster_size == max(coarse_cluster_size)) |>
-  select(-coarse_cluster_size)
-log_info("Protein counts per coarse cluster in cross-taxa shape-func manifold:")
-print(large_coarse_cluster_protein_df |> count(coarse_ct_sf_cluster))
-
-# Run UMAP on large coarse cluster alone, including GO Module cluster colourmap
-subdf_umap_result <- do_umap(
-  large_coarse_cluster_protein_df, "cross-taxa", "Shape\n+\nGO Module Scores",
-  colour_by = "go_module_cluster", colour_map = colour_map
-)
-large_cluster_embedding_plt <- subdf_umap_result[["plt"]]
-svg(glue("{outdir}/ct_sf_large_cluster_umap.svg"), width = 8, height = 8)
-print(large_cluster_embedding_plt)
-invisible(dev.off())
-str(umap_result[["umapped_df"]])
-
-# Run HDBSCAN on large cluster UMAP embedding to isolate "fine" clusters
-subdf_to_cluster <- subdf_umap_result[["umapped_df"]]
-hdb <- hdbscan(subdf_to_cluster |> select(UMAP1, UMAP2), minPts = 10)
-subdf_to_cluster$fine_ct_sf_cluster <- hdb$cluster # cluster 0 = noise
-subdf_to_cluster$fine_ct_sf_cluster_prob <- hdb$membership_prob
-
-log_info("Protein counts per fine cluster in large coarse cluster:")
-print(subdf_to_cluster |> count(fine_ct_sf_cluster))
-
-# Visualise fine clusters on large cluster UMAP embedding
-log_info("making colour map ...")
-fine_clusters <- levels(factor(subdf_to_cluster$fine_ct_sf_cluster))
-cm_fine_clusters <- c(
-  "0" = "grey", # 0 = noise
-  setNames(
-    viridis::viridis(length(fine_clusters) - 1, option = "D"),
-    fine_clusters[fine_clusters != "0"]
-  )
-)
-log_info("made colour map")
-svg(glue("{outdir}/ct_sf_large_cluster_fine_clusters.svg"), width = 8, height=8)
-print(do_umap(
-  subdf_to_cluster, "cross-taxa", "Shape\n+\nGO Module Scores",
-  colour_by = "fine_ct_sf_cluster", colour_map = cm_fine_clusters
-))
-invisible(dev.off())
-
-# Visualise cluster membership probabilities to assess fine clustering confidence
-svg(glue("{outdir}/ct_sf_fine_cluster_probs.svg"), width = 12, height = 12)
-plt <- ggplot(subdf_to_cluster, aes(fine_ct_sf_cluster_prob)) +
-  geom_histogram(binwidth = 0.05) +
-  labs(title = glue(
-    "HDBSCAN Cross-Taxa Shape + GO Module Score Fine Cluster Probabilities"
-  ))
-print(plt)
-invisible(dev.off())
-
-
-# Display large cluster embedding plot next to full cross-taxa shape-func plot
-# with an arrow pointing to represented cluster
-
 
 log_info("Done!")
-
-
-
-
-
-
-
-
-
 
 
