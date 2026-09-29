@@ -122,7 +122,7 @@ make_prop_repr_plot <- function(cluster_id, cluster_df, outdir, styles) {
   full_plt <- ggplot(prop_df, aes(x = 1, y = prop, fill = taxon)) +
     geom_col(width = 0.6, color = "black") +
     coord_flip() + # make horizontal
-    scale_fill_manual(values = styles$taxa_colors) +
+    scale_fill_manual(values = styles$taxa_colour) +
     labs(
       title = glue("Taxon Representation (GMS Cluster {cluster_id})"),
       x = NULL, y = "Proportion", fill = "Taxon"
@@ -148,23 +148,47 @@ make_prop_repr_plot <- function(cluster_id, cluster_df, outdir, styles) {
 
 
 
-# Create vertical bar plot showing proportion of proteins within each taxa
+# Create vertical bar plot showing percentage of proteins within each taxa
 # that are assigned to this GMS cluster
-make_prop_ded_plot <- function (cluster_id, cluster_df, outdir, styles) {
+make_perc_ded_plot <- function(cluster_id, cluster_df, df, outdir, styles) {
+  
+  # Compute percentage of proteins in each taxa present in this GMS cluster
+  total_per_taxon <- df |> count(taxon) |> rename(total = n)
+  cluster_total_per_taxon <- cluster_df |> 
+    count(taxon) |> rename(cluster_total = n)
+  perc_df <- left_join( # use left join as some taxa may not be in cluster
+    total_per_taxon, cluster_total_per_taxon, by = "taxon") |>
+    mutate(cluster_total = replace_na(cluster_total, 0)) |>
+    mutate(perc = (cluster_total / total) * 100)
   
   # Build full plot
-  full_plt <- ... # TODO
+  full_plt <- ggplot(perc_df, aes(x = taxon, y = perc, fill = taxon)) +
+    geom_col(width = 0.7, color = "black") +
+    scale_fill_manual(values = styles$taxa_colour) +
+    labs(
+      title = glue(
+        "Percentage of Taxon Proteins Assigned to GMS Cluster {cluster_id}"
+      ),
+      x = "Taxon", y = "Percentage of Taxon Proteins", fill = "Taxon"
+    ) +
+    theme_ipsum() +
+    theme(
+      plot.title = element_text(size = 12),
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
   
   # Write full plot to file
-  svg(glue("{outdir}/gms_{cluster_id}_prop_ded.svg"), width=12, height=8)
+  svg(glue("{outdir}/gms_{cluster_id}_perc_ded.svg"), width = 12, height = 8)
   print(full_plt)
   invisible(dev.off())
   
   # Create and return base plot (renamed title) for comparative patchwork grid
-  base_plt <- ... # TODO
+  base_plt <- full_plt +
+    labs(title = glue("GMS Cluster {cluster_id}"))
   return(base_plt)
   
 }
+
 
 
 
@@ -180,8 +204,10 @@ get_plots <- function(df) {
       list(
         shape_plot = make_shape_plot(cluster_id, cluster_df, outdir, styles),
         go_graph = make_go_graph_plot(cluster_id, cluster_df, outdir, styles),
-        prop_repr_plot = make_prop_repr_plot(cluster_id, cluster_df, outdir, styles),
-        prop_ded_plot = make_prop_ded_plot(cluster_id, cluster_df, outdir, styles)
+        prop_repr_plot = make_prop_repr_plot(
+          cluster_id, cluster_df, outdir, styles),
+        perc_ded_plot = make_perc_ded_plot(
+          cluster_id, cluster_df, df, outdir, styles)
       )
     },
     df = df, outdir = outdir, styles = STYLES
