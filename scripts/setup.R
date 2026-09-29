@@ -32,7 +32,7 @@ dir.create("results", showWarnings = FALSE)
 result_dirs <- list(
   "1_filter_proteins", "2_extract_shape_features", 
   "3_extract_functional_features", "4_cluster_by_gms",
-  "5_do_shape_cluster_stats"
+  "5_make_visual_summaries"
 )
 lapply(result_dirs, function (d) {
   dir.create(glue("results/{d}"), showWarnings = FALSE)
