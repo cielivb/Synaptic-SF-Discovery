@@ -48,7 +48,10 @@ taxa <- levels(factor(sorted(df$taxon)))
 taxa_line_style_map <- setNames(
   c("solid", "dashed", "dotted", "dotdash", "longdash", "twodash"), taxa
 )
-# TODO: taxa colour map
+taxa_colour_map <- c(
+  human = "#E69F00", mouse = "#56B4E9", rat = "#009E73",
+  fly = "#D55E00", worm = "#CC79A7", zebrafish  = "#F0E442"
+)
 
 STYLES = list(
   gms_cluster = gms_cluster_colour_map,
@@ -147,7 +150,6 @@ make_prop_repr_plot <- function(cluster_id, cluster_df, outdir, styles) {
 }
 
 
-
 # Create vertical bar plot showing percentage of proteins within each taxa
 # that are assigned to this GMS cluster
 make_perc_ded_plot <- function(cluster_id, cluster_df, df, outdir, styles) {
@@ -188,7 +190,6 @@ make_perc_ded_plot <- function(cluster_id, cluster_df, df, outdir, styles) {
   return(base_plt)
   
 }
-
 
 
 
