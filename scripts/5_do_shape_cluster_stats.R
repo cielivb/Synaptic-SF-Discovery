@@ -4,10 +4,12 @@
 # etc, critical for my non-normal shape data even after log transform)
 
 outdir <- "results/5_do_shape_cluster_stats"
-silhouette_dir <- glue("{outdir}/silhouettes")
 log_file <- "logs/5_do_shape_cluster_stats.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+
+library(cluster) # silhouette scoring
+library(dbscan)
 
 
 # Launch cluster for parallel processing
@@ -32,20 +34,52 @@ gms_cluster_dfs <- future_lapply(
     
     # Identify shape clusters within GMS cluster via pure HDBSCAN, using minPts
     # = 10 for bare minimum statistical robustness later
-    shape_features <- gms_df |>
-      select(
-        scaled_mad_mean_pLDDT, scaled_mad_eccentricity_u,
-        scaled_mad_coeff_var_u, scaled_mad_log_kurtosis_u,
-        scaled_mad_log_length_u
-      )
+    shape_features <- gms_df |> select(starts_with("scaled_"))
     hdb <- hdbscan(shape_features, minPts = 10)
     gms_df$shape_cluster <- hdb$cluster # cluster 0 = noise
     gms_df$shape_cluster_membership_prob <- hdb$membership_prob
     
     # Visualise shape cluster membership probability distribution
+    svg(
+      glue("{outdir}/gms_{gms_cluster}_hdbscan_probs.svg"), 
+      width = 8, height = 8
+    )
+    plt <- ggplot(gms_df, aes(shape_cluster_membership_prob)) +
+      geom_histogram(binwidth = 0.05) +
+      labs(
+        title = "HDBSCAN Shape Cluster Probabilities",
+        subtitle = glue("GMS Cluster {gms_cluster}")
+      )
+    print(plt)
+    invisible(dev.off())
     
-    # Run a silhouette analysis
-  }
+    # Visualise silhouette scores
+    num_shape_clusters <- length(unique(as.integer(gms_df$shape_cluster)))
+    if (num_shape_clusters > 1) {
+      
+      # Create the silhouette scoring plot
+      distance_matrix <- dist(shape_features, method = "euclidean")
+      sil <- silhouette(as.integer(gms_df$shape_cluster), distance_matrix)
+      svg(
+        glue("{outdir}/gms_{gms_cluster}_silhouette.svg"), 
+        width = 8, height = 8
+      )
+      plot(sil, col = gms_df$shape_cluster)
+      invisible(dev.off())
+      
+    } else if (num_shpae_clusters == 1) {
+      log_info(glue(
+        "Skipping shape cluster silhouette scoring for {gms_cluster}:" /
+        "only one cluster found"
+      ))
+    } else {
+      log_info(glue(
+        "Skipping shape cluster silhouette scoring for {gms_cluster}:" /
+        "no clusters found"
+      ))
+    }
+    
+  }, outdir = outdir
 )
 clustered_df <- bind_rows(gms_cluster_dfs) 
 
