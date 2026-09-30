@@ -133,6 +133,13 @@ for child, ancestors in ancestor_map.items():
 ### Make a cool plot! -----------------------------------------------------
 
 A = to_agraph(G)
+A.graph_attr.update({
+    "nodesep": "0.5",
+    "ranksep": "0.5",
+    "overlap": "false",
+    "splines": "true"
+})
+
 
 go_module_cmap_path = Path(
   "results/6_make_visual_summaries/go_module_colours.csv"
@@ -173,7 +180,7 @@ for meta_node in G.nodes:
     node.attr["label"] = "\n".join(textwrap.wrap(data["label"], width=25))
 
 # Render plot
-A.layout("fdp")
+A.layout("twopi")
 A.draw(f"results/6_make_visual_summaries/gms_{CLUSTER_ID}_go_dag.svg")
 
 
