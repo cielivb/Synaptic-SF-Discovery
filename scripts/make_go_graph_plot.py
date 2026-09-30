@@ -42,13 +42,15 @@ go_presence_df_path = Path(
 )
 go_presence_df = pd.read_csv(str(go_presence_df_path))
 
-# Read in enriched GO IDs, using adjusted p < 0.05
+# Read in GO IDs in cluster with effect size (odds ratio) >= 2.5
 enriched_go_ids_path = Path(
   "results/5_find_enriched_go_ids/go_enrichment_results.csv"
 )
-enriched_go_ids_df = pd.read_csv(str(enriched_go_ids_path))[
-  enriched_go_ids_df["gms_cluster" == CLUSTER_ID && "p_adj" < 0.05]
-]["go_id"]
+enriched_go_ids_df = pd.read_csv(str(enriched_go_ids_path))
+enriched_go_ids_df = enriched_go_ids_df[
+    (enriched_go_ids_df["gms_cluster"] == CLUSTER_ID) &
+    (enriched_go_ids_df["odds_ratio"] >= 2.5)
+][["go_id", "odds_ratio"]]
 
 
 
@@ -77,8 +79,8 @@ cluster_go_df = cluster_go_df.astype(int)
 go_freq_df = cluster_go_df.mean().mul(100).reset_index()
 go_freq_df.columns = ["go_id", "percentage"]
 
-# Remove GO IDs with percentage less than 5% to avoid clutter
-#go_freq_df = go_freq_df[go_freq_df["percentage"] >= 5]
+# Keep only those GO IDs present in at least 5% of cluster proteins
+go_freq_df = go_freq_df[go_freq_df["percentage"] >= 5]
 
 # Merge GO ID percentage dataframe with GO metadata dataframe
 cluster_go_df = go_freq_df.merge(go_metadata_df, on = "go_id", how = "inner")
@@ -100,7 +102,8 @@ for _, row in cluster_go_df.iterrows():
     G.add_node(
         row["go_id"], 
         label = row["label"], namespace = row["namespace"],
-        module = row["module"], percentage = row["percentage"]
+        module = row["module"], percentage = row["percentage"],
+        odds_ratio = row["odds_ratio"]
     )
 
 # Add DAG edges connecting nodes to closest ancestors
@@ -112,10 +115,7 @@ for child, ancestors in ancestor_map.items():
     # Iteratively remove ancestors as closer ancestors are discovered
     # That is, if c (child) -> b, and b -> a, drop c -> a
     for b in valid_ancestors:
-        if not ancestor_map.get(b, None): # Remove if ancestor metadata not present
-          if b in keep_ancestors:
-            keep_ancestors.remove(b)
-          continue
+        if not ancestor_map.get(b, None): continue
         # We know c -> b by definition of b being an ancestor of c
         # Now remove all c -> a where b -> a exists
         for a in valid_ancestors:
@@ -168,12 +168,12 @@ for meta_node in G.nodes:
     node.attr["fixedsize"] = "false"
 
     # Text properties
-    node.attr["fontsize"] = str(8 * 1.05 ** data["percentage"])
+    node.attr["fontsize"] = str(8 * 1.1 ** data["percentage"])
     #node.attr["fontsize"] = str(8 + data["percentage"])
     node.attr["label"] = "\n".join(textwrap.wrap(data["label"], width=25))
 
 # Render plot
-A.layout("sfdp") # hierarchical DAG layout
+A.layout("fdp")
 A.draw(f"results/6_make_visual_summaries/gms_{CLUSTER_ID}_go_dag.svg")
 
 
