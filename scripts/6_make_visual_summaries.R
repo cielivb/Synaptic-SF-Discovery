@@ -1,8 +1,8 @@
 # Visualise protein shapes, core GO IDs, and taxa proportions per GMS cluster,
 # and visualise evolutionary graph of GMS cluster conservation
 
-outdir <- "results/5_make_visual_summaries"
-log_file <- "logs/5_make_visual_summaries.log"
+outdir <- "results/6_make_visual_summaries"
+log_file <- "logs/6_make_visual_summaries.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 dir.create(glue("{outdir}/cluster_dfs"), showWarnings = FALSE)

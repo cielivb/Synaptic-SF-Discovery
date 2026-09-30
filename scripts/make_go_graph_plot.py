@@ -1,4 +1,4 @@
-""" Create a GO ID graph depicting most common GO IDs a given GMS cluster """
+""" Create a GO ID graph depicting enriched GO IDs a given GMS cluster """
 
 import argparse
 import json
@@ -22,7 +22,7 @@ CLUSTER_ID = args.cluster_id
 
 # Read in cluster dataframe
 cluster_df_path = Path(
-  f"results/5_make_visual_summaries/cluster_dfs/{CLUSTER_ID}.csv"
+  f"results/6_make_visual_summaries/cluster_dfs/{CLUSTER_ID}.csv"
 )
 cluster_df = pd.read_csv(str(cluster_df_path))
 
@@ -42,14 +42,26 @@ go_presence_df_path = Path(
 )
 go_presence_df = pd.read_csv(str(go_presence_df_path))
 
+# Read in enriched GO IDs, using adjusted p < 0.05
+enriched_go_ids_path = Path(
+  "results/5_find_enriched_go_ids/go_enrichment_results.csv"
+)
+enriched_go_ids_df = pd.read_csv(str(enriched_go_ids_path))[
+  enriched_go_ids_df["gms_cluster" == CLUSTER_ID && "p_adj" < 0.05]
+]["go_id"]
+
 
 
 
 ### Join dataframes -------------------------------------------------------
 
-# Get dataframe containing GO ID, label, namespace, and GO module
-go_metadata_df = go_metadata_df.merge(go_module_df, on = "go_id", how = "inner")
-go_metadata_df = go_metadata_df.rename(columns={"lbl": "label"})
+# Get dataframe containing GO ID, label, namespace, and GO module for enriched
+# GO IDs only
+go_metadata_df = (
+    go_metadata_df.merge(enriched_go_ids_df, on = "go_id", how = "inner")
+    .merge(go_module_df, on = "go_id", how = "inner")
+    .rename(columns={"lbl": "label"})
+)
 
 # Get dataframe containing only rows present in cluster dataframe, and only GO
 # ID columns where GO ID is present in at least one of these rows
@@ -66,11 +78,11 @@ go_freq_df = cluster_go_df.mean().mul(100).reset_index()
 go_freq_df.columns = ["go_id", "percentage"]
 
 # Remove GO IDs with percentage less than 5% to avoid clutter
-go_freq_df = go_freq_df[go_freq_df["percentage"] >= 5]
+#go_freq_df = go_freq_df[go_freq_df["percentage"] >= 5]
 
 # Merge GO ID percentage dataframe with GO metadata dataframe
 cluster_go_df = go_freq_df.merge(go_metadata_df, on = "go_id", how = "inner")
-cluster_go_df.to_csv(f"results/5_make_visual_summaries/cluster_dfs/merged{CLUSTER_ID}.csv")
+cluster_go_df.to_csv(f"results/6_make_visual_summaries/cluster_dfs/merged{CLUSTER_ID}.csv")
 
 
 
@@ -123,7 +135,7 @@ for child, ancestors in ancestor_map.items():
 A = to_agraph(G)
 
 go_module_cmap_path = Path(
-  "results/5_make_visual_summaries/go_module_colours.csv"
+  "results/6_make_visual_summaries/go_module_colours.csv"
 )
 go_module_cmap_df = pd.read_csv(str(go_module_cmap_path))
 go_module_cmap_df["module"] = (
@@ -162,7 +174,7 @@ for meta_node in G.nodes:
 
 # Render plot
 A.layout("sfdp") # hierarchical DAG layout
-A.draw(f"results/5_make_visual_summaries/gms_{CLUSTER_ID}_go_dag.svg")
+A.draw(f"results/6_make_visual_summaries/gms_{CLUSTER_ID}_go_dag.svg")
 
 
 
