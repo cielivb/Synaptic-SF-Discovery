@@ -69,9 +69,7 @@ go_freq_df = go_freq_df[go_freq_df["percentage"] >= 10]
 
 # Merge GO ID percentage dataframe with GO metadata dataframe
 cluster_go_df = go_freq_df.merge(go_metadata_df, on = "go_id", how = "inner")
-#cluster_go_df = cluster_go_df.dropna(subset=["namespace"])
-cluster_go_df.to_csv(f"results/5_make_visual_summaries/cluster_dfs/merged_{CLUSTER_ID}.csv")
-
+cluster_go_df.to_csv(f"results/5_make_visual_summaries/cluster_dfs/merged{CLUSTER_ID}.csv")
 
 
 
@@ -94,13 +92,19 @@ for _, row in cluster_go_df.iterrows():
 
 # Add DAG edges connecting nodes to closest ancestors
 for child, ancestors in ancestor_map.items():
-    valid_ancestors = set([a for a in ancestors if a in cluster_go_df["go_id"]]) 
+    if child not in G.nodes: continue
+    valid_ancestors = set([a for a in ancestors if a in G.nodes]) 
     keep_ancestors = valid_ancestors.copy()
   
     # Iteratively remove ancestors as closer ancestors are discovered
     # That is, if c (child) -> b, and b -> a, drop c -> a
     for b in valid_ancestors:
+        if not ancestor_map.get(b, None): # Remove if ancestor metadata not present
+          if b in keep_ancestors:
+            keep_ancestors.remove(b)
+          continue
         # We know c -> b by definition of b being an ancestor of c
+        # Now remove all c -> a where b -> a exists
         for a in valid_ancestors:
             if a in ancestor_map[b]:
                 if a in keep_ancestors:
@@ -134,6 +138,28 @@ namespace_to_linestyle = {
     "molecular_function": "dashed",
     "cellular_component": "dotted"
 }
+
+
+
+bad_rows = []
+
+for n, d in G.nodes(data=True):
+    ns = d.get("namespace")
+    if ns not in ["biological_process", "molecular_function", "cellular_component"]:
+        bad_rows.append({
+            "go_id": n,
+            "label": d.get("label"),
+            "namespace": ns,
+            "module": d.get("module"),
+            "percentage": d.get("percentage")
+        })
+
+pd.DataFrame(bad_rows).to_csv(
+    f"results/5_make_visual_summaries/cluster_dfs/bad_nodes_{CLUSTER_ID}.csv",
+    index=False
+)
+
+
 
 # Set node attributes
 for meta_node in G.nodes:
