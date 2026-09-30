@@ -40,10 +40,18 @@ if (0 %in% gms_clusters) { # grey out noise points only if present
   )
 }
 
-# Define GO module colour map
+# Define GO module colour map then write colour map to file (used in python)
 go_modules <- df |> select(starts_with("module_")) |> names()
 go_module_colour_map <- setNames(
   viridis::viridis(length(go_modules)), go_modules
+)
+go_module_cmap_df <- data.frame(
+  module = names(go_module_colour_map),
+  colour = unname(go_module_colour_map),
+  stringsAsFactors = FALSE
+)
+write.csv(
+  go_module_cmap_df, glue("{outdir}/go_module_colours.csv"), row.names = FALSE
 )
 
 # Define taxon line style map and colour map

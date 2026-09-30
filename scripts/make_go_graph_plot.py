@@ -3,6 +3,7 @@
 import argparse
 import json
 import networkx as nx
+from networkx.drawing.nx_agraph import to_agraph
 import pandas as pd
 from pathlib import Path
 
@@ -84,7 +85,7 @@ cluster_go_df = go_freq_df.merge(go_metadata_df, on = "go_id", how = "left")
 
 
 
-### Create ancestor-descendant DAG ----------------------------------------
+### Create ancestor -> descendant DAG -------------------------------------
 
 # Read in JSON mapping GO IDs to lists of ancestors
 json_path = Path("results/1_filter_proteins/synaptic_go_ancestors.json")
@@ -124,12 +125,36 @@ for child, ancestors in ancestor_map.items():
   
 ### Make a cool plot! -----------------------------------------------------
 
+A = to_agraph(G)
 
+go_module_cmap_path = Path("results/5_make_visual_summaries/go_module_colours.csv")
+go_module_cmap_df = pd.read_csv(str(go_module_cmap_path))
+module_to_colour = dict(zip(df.module, df.colour))
 
+namespace_to_linestyle = {
+    "biological_process": "solid",
+    "molecular_function": "dashed",
+    "cellular_component": "dotted"
+}
 
+# Set node attributes
+for meta_node in G.nodes:
+    node = A.get_node(meta_node)
+    data = G.nodes[meta_node]
 
+    # Node box properties
+    node.attr["shape"] = "box"
+    node.attr["fillcolor"] = module_to_colour[data["module"]]
+    node.attr["style"] = "filled"
+    node.attr["style"] += "," + namespace_to_linestyle[data["namespace"]]
 
+    # Text properties
+    node.attr["fontsize"] = str(10 + data["percentage"] * 0.5)
+    node.attr["label"] = data["label"]
 
+# Render plot
+A.layout("dot") # hierarchical DAG layout
+A.draw(f"results/5_make_visual_summaries/gms_{CLUSTER_ID}_go_dag.pdf")
 
 
 
