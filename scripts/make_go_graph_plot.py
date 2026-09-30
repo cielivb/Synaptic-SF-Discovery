@@ -6,6 +6,7 @@ import networkx as nx
 from networkx.drawing.nx_agraph import to_agraph
 import pandas as pd
 from pathlib import Path
+import textwrap
 
 
 # Read in cluster ID
@@ -64,8 +65,8 @@ cluster_go_df = cluster_go_df.astype(int)
 go_freq_df = cluster_go_df.mean().mul(100).reset_index()
 go_freq_df.columns = ["go_id", "percentage"]
 
-# Remove GO IDs with percentage less than 10% to avoid clutter
-go_freq_df = go_freq_df[go_freq_df["percentage"] >= 10]
+# Remove GO IDs with percentage less than 5% to avoid clutter
+go_freq_df = go_freq_df[go_freq_df["percentage"] >= 5]
 
 # Merge GO ID percentage dataframe with GO metadata dataframe
 cluster_go_df = go_freq_df.merge(go_metadata_df, on = "go_id", how = "inner")
@@ -140,27 +141,6 @@ namespace_to_linestyle = {
 }
 
 
-
-bad_rows = []
-
-for n, d in G.nodes(data=True):
-    ns = d.get("namespace")
-    if ns not in ["biological_process", "molecular_function", "cellular_component"]:
-        bad_rows.append({
-            "go_id": n,
-            "label": d.get("label"),
-            "namespace": ns,
-            "module": d.get("module"),
-            "percentage": d.get("percentage")
-        })
-
-pd.DataFrame(bad_rows).to_csv(
-    f"results/5_make_visual_summaries/cluster_dfs/bad_nodes_{CLUSTER_ID}.csv",
-    index=False
-)
-
-
-
 # Set node attributes
 for meta_node in G.nodes:
     node = A.get_node(meta_node)
@@ -172,13 +152,16 @@ for meta_node in G.nodes:
     node.attr["style"] = namespace_to_linestyle[data["namespace"]]
     node.attr["style"] += ",rounded"
     node.attr["penwidth"] = "3"  # box outline width
+    node.attr["margin"] = "0.1,0.05"
+    node.attr["fixedsize"] = "false"
 
     # Text properties
-    node.attr["fontsize"] = str(10 + data["percentage"] * 0.5)
-    node.attr["label"] = data["label"]
+    node.attr["fontsize"] = str(8 * 1.05 ** data["percentage"])
+    #node.attr["fontsize"] = str(8 + data["percentage"])
+    node.attr["label"] = "\n".join(textwrap.wrap(data["label"], width=25))
 
 # Render plot
-A.layout("dot") # hierarchical DAG layout
+A.layout("sfdp") # hierarchical DAG layout
 A.draw(f"results/5_make_visual_summaries/gms_{CLUSTER_ID}_go_dag.svg")
 
 
