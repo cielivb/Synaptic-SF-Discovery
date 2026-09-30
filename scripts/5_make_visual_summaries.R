@@ -6,6 +6,7 @@ log_file <- "logs/5_make_visual_summaries.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 
+library(cowplot)
 library(ggplot2)
 library(GGally)
 library(tidyr)
@@ -61,6 +62,27 @@ STYLES = list(
   taxa_line = taxa_line_style_map,
   taxa_colour = taxa_colour_map
 )
+
+# Create legend dummy plot and extract legend for shape grid plot
+shape_grid_legend_plot <- ggplot(data.frame(taxon = names(STYLES$taxa_colour)),
+  aes(x = taxon, y = 1, colour = taxon, linetype = taxon)
+) +
+  geom_line() +
+  scale_colour_manual(values = STYLES$taxa_colour) +
+  scale_linetype_manual(values = STYLES$taxa_linetype) +
+  theme_void() +
+  theme(
+    legend.position = "right",
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 8)
+  )
+shape_grid_legend <- get_legend(shape_grid_legend_plot)
+
+LEGENDS = list(
+  shape_grid = shape_grid_legend
+  # TODO - add other legends
+)
+
 
 
 
@@ -250,12 +272,15 @@ make_shape_grid_plot <- function (plt_list) {
   shape_plts <- future_lapply(plt_list, function (cluster_plots) {
     cluster_plots$shape_plot
   })
-  shape_grid_plt <- wrap_plots(shape_plts) +
-    plot_layout(guides = "collect") +
-    plot_annotation(
-      title = "Protein Shape Profiles Across GMS Clusters"
-    )
-  svg(glue("{outdir}/shape_grid_plot.svg"), height = 12, width = 12)
+  
+  shape_grid_plt <- wrap_plots(
+    shape_plts, ncol = 4, guides = "keep", axes = "keep", axis_titles = "keep"
+  )
+  shape_grid_plt <- shape_grid_plt / legend +
+    plot_annotation(title = "Protein Shape Profiles Across GMS Clusters")
+  
+  
+  pdf(glue("{outdir}/shape_grid_plot.pdf"), height = 12, width = 12)
   print(shape_grid_plt)
   invisible(dev.off())
 }
@@ -278,7 +303,7 @@ make_prop_repr_grid_plot <- function (plt_list) {
     plot_annotation(
       title = "Proportions of GMS Cluster Proteins Belonging To Each Taxa"
     )
-  svg(glue("{outdir}/prop_repr_grid_plot.svg"), height = 12, width = 12)
+  pdf(glue("{outdir}/prop_repr_grid_plot.pdf"), height = 12, width = 12)
   print(prop_repr_grid_plt)
   invisible(dev.off())
 }
@@ -294,7 +319,7 @@ make_perc_ded_grid_plot <- function (plt_list) {
     plot_annotation(
       title = "Proportions of Taxon Proteins Assigned to GMS Clusters"
     )
-  svg(glue("{outdir}/perc_ded_grid_plot.svg"), height = 12, width = 12)
+  pdf(glue("{outdir}/perc_ded_grid_plot.pdf"), height = 12, width = 12)
   print(perc_ded_grid_plt)
   invisible(dev.off())
 }
@@ -318,10 +343,10 @@ main <- function () {
   log_info("Making grid plots ...")
   individual_plots <- get_plots(df) # keyed by GMS cluster ID, then by plot type
   make_shape_grid_plot(individual_plots)
-  make_go_graph_grid_plot(individual_plots)
-  make_prop_repr_grid_plot(individual_plots)
-  make_perc_ded_grid_plot(individual_plots)
-  make_gms_cluster_summary_plots(individual_plots)
+  #make_go_graph_grid_plot(individual_plots)
+  #make_prop_repr_grid_plot(individual_plots)
+  #make_perc_ded_grid_plot(individual_plots)
+  #make_gms_cluster_summary_plots(individual_plots)
   
   log_info("Done!")
 }
