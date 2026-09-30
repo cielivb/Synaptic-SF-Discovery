@@ -47,8 +47,8 @@ go_module_colour_map <- setNames(
 
 # Define taxon line style map and colour map
 taxa_line_style_map <- c(
-  human = "dotted", mouse = "dotdash", rat = "solid",
-  fly = "dashed", worm = "longdash", zebrafish = "twodash"
+  human = "dashed", mouse = "longdash", rat = "solid",
+  fly = "dotted", worm = "dotdash", zebrafish = "twodash"
 )
 taxa_colour_map <- c(
   human = "#D55E00", mouse = "#E69F00", rat = "#F0E442",
@@ -79,27 +79,36 @@ plot_gms_cluster_evo <- function () {
 # cluster, where lines are styled by taxon
 make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
   
-  cols <- which(startsWith(names(cluster_df), "scaled_"))
+  shape_features <- cluster_df |>
+    select(taxon, starts_with("scaled_")) |>
+    rename(
+      "Mean pLDDT" = scaled_mad_mean_pLDDT,
+      "Eccentricity" = scaled_mad_eccentricity_u,
+      "Coefficient of Variation" = scaled_mad_coeff_var_u,
+      "Log(Kurtosis)" = scaled_mad_log_kurtosis_u,
+      "Log(Length)" = scaled_mad_log_length_u
+    )
   present_taxa <- unique(cluster_df$taxon)
   line_map <- styles$taxa_line[present_taxa]
   colour_map <- styles$taxa_colour[present_taxa]
   
   # Build full plot
-  full_plt <- ggparcoord(cluster_df,
-    columns = cols, groupColumn = "taxon",
-    scale = "uniminmax", showPoints = TRUE, alphaLines = 0.3,
+  full_plt <- ggparcoord(shape_features,
+    columns = 2:6, groupColumn = "taxon",
+    scale = "uniminmax", showPoints = TRUE, alphaLines = 0.4,
     mapping = aes(linetype = taxon), boxplot = TRUE,
   ) +
     scale_linetype_manual(values = line_map) +
     scale_colour_manual(values = colour_map) +
     labs(
       title = glue("Protein Shapes (GMS Cluster {cluster_id})"), 
-      x = "Protein Shape Feature", y = "",
+      x = "", y = "Min-Max Scaled MAD-adjusted Value",
       linetype = "Taxon", color = "Taxon"
     ) +
     theme_classic() +
     theme(
-      plot.title = element_text(size = 10, hjust = 0.5)
+      plot.title = element_text(size = 14, hjust = 0.5),
+      axis.title.y = element_text(margin = margin(r = 10))
     )
   
   # Write full plot to file
@@ -176,7 +185,7 @@ make_perc_ded_plot <- function(cluster_id, cluster_df, df, outdir, styles) {
   full_plt <- ggplot(perc_df, aes(x = taxon, y = perc, fill = taxon)) +
     geom_text(
       aes(label = sprintf("%d%%", round(perc))), # print rounded perc
-      size = 3.5, vjust = -0.5, # move % text above the bar
+      size = 10, vjust = -0.5, # move % text above the bar
     ) +
     geom_col(width = 0.7, color = "black") +
     scale_fill_manual(values = styles$taxa_colour) +
@@ -237,24 +246,64 @@ get_plots <- function(df) {
 ### Define patchwork layout functions --------------------------------------
 
 # Comparative parallel coordinates (protein shapes) plot grid
+make_shape_grid_plot <- function (plt_list) {
+  shape_plts <- future_lapply(plt_list, function (cluster_plots) {
+    cluster_plots$shape_plot
+  })
+  shape_grid_plt <- wrap_plots(shape_plts) +
+    plot_layout(guides = "collect") +
+    plot_annotation(
+      title = "Protein Shape Profiles Across GMS Clusters"
+    )
+  svg(glue("{outdir}/shape_grid_plot.svg"), height = 12, width = 12)
+  print(shape_grid_plt)
+  invisible(dev.off())
+}
+
 
 # Comparative GO graphs grid
+make_go_graph_grid_plot <- function (plt_list) {
+  # TODO in python?
+  NULL
+}
+
 
 # Comparative stacked bar (proportion of proteins representing each taxon) grid
+make_prop_repr_grid_plot <- function (plt_list) {
+  prop_repr_plts <- future_lapply(plt_list, function (cluster_plots) {
+    cluster_plots$prop_repr_plot
+  })
+  prop_repr_grid_plt <- wrap_plots(prop_repr_plts) +
+    plot_layout(guides = "collect") +
+    plot_annotation(
+      title = "Proportions of GMS Cluster Proteins Belonging To Each Taxa"
+    )
+  svg(glue("{outdir}/prop_repr_grid_plot.svg"), height = 12, width = 12)
+  print(prop_repr_grid_plt)
+  invisible(dev.off())
+}
+
 
 # Comparative "proportion per taxa dedicated" bar plots grid
+make_perc_ded_grid_plot <- function (plt_list) {
+  perc_ded_plts <- future_lapply(plt_list, function (cluster_plots) {
+    cluster_plots$perc_ded_plot
+  })
+  perc_ded_grid_plt <- wrap_plots(perc_ded_plts) +
+    plot_layout(guides = "collect") +
+    plot_annotation(
+      title = "Proportions of Taxon Proteins Assigned to GMS Clusters"
+    )
+  svg(glue("{outdir}/perc_ded_grid_plot.svg"), height = 12, width = 12)
+  print(perc_ded_grid_plt)
+  invisible(dev.off())
+}
+
 
 # GMS cluster summary grid
-
-
-
-
-### Create patchwork plots ------------------------------------------------
-
-make_plots <- function (df) {
-  individual_plots <- get_plots(df) # keyed by GMS cluster ID, then by plot type
-  
-  # TODO: get patchwork layouts then stitch em up
+make_gms_cluster_summary_plots <- function (plt_list) {
+  # TODO
+  NULL
 }
 
 
@@ -265,8 +314,16 @@ make_plots <- function (df) {
 main <- function () {
   log_info("Making main plot ...")
   plot_gms_cluster_evo()
+  
   log_info("Making grid plots ...")
-  make_plots(df)
+  individual_plots <- get_plots(df) # keyed by GMS cluster ID, then by plot type
+  make_shape_grid_plot(individual_plots)
+  make_go_graph_grid_plot(individual_plots)
+  make_prop_repr_grid_plot(individual_plots)
+  make_perc_ded_grid_plot(individual_plots)
+  make_gms_cluster_summary_plots(individual_plots)
+  
+  log_info("Done!")
 }
 
 main()
