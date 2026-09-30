@@ -129,7 +129,10 @@ make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
 # Create GO graph showing most common GO IDs in GMS cluster, where GO IDs are
 # coloured by their associated GO module
 make_go_graph_plot <- function (cluster_id, cluster_df, outdir, styles) {
-  NULL # TODO
+  # Write cluster df to CSV
+  write_csv(cluster_df, glue("{outdir}/cluster_dfs/{cluster_id}.csv"))
+  system(glue("python scripts/make_go_graph_plot.py {cluster_id}"))
+  NULL
 }
 
 
