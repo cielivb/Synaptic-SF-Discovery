@@ -63,26 +63,6 @@ STYLES = list(
   taxa_colour = taxa_colour_map
 )
 
-# Create legend dummy plot and extract legend for shape grid plot
-shape_grid_legend_plot <- ggplot(data.frame(taxon = names(STYLES$taxa_colour)),
-  aes(x = taxon, y = 1, colour = taxon, linetype = taxon)
-) +
-  geom_line() +
-  scale_colour_manual(values = STYLES$taxa_colour) +
-  scale_linetype_manual(values = STYLES$taxa_linetype) +
-  theme_void() +
-  theme(
-    legend.position = "right",
-    legend.title = element_text(size = 10),
-    legend.text = element_text(size = 8)
-  )
-shape_grid_legend <- get_legend(shape_grid_legend_plot)
-
-LEGENDS = list(
-  shape_grid = shape_grid_legend
-  # TODO - add other legends
-)
-
 
 
 
@@ -274,9 +254,8 @@ make_shape_grid_plot <- function (plt_list) {
   })
   
   shape_grid_plt <- wrap_plots(
-    shape_plts, ncol = 4, guides = "keep", axes = "keep", axis_titles = "keep"
-  )
-  shape_grid_plt <- shape_grid_plt / legend +
+    shape_plts, ncol = 4, guides = "collect", axes = "keep", axis_titles = "keep"
+  ) +
     plot_annotation(title = "Protein Shape Profiles Across GMS Clusters")
   
   
