@@ -245,74 +245,6 @@ get_plots <- function(df) {
 
 
 
-### Define patchwork layout functions --------------------------------------
-
-# Comparative parallel coordinates (protein shapes) plot grid
-make_shape_grid_plot <- function (plt_list) {
-  shape_plts <- future_lapply(plt_list, function (cluster_plots) {
-    cluster_plots$shape_plot
-  })
-  
-  shape_grid_plt <- wrap_plots(
-    shape_plts, ncol = 4, guides = "collect", axes = "keep", axis_titles = "keep"
-  ) +
-    plot_annotation(title = "Protein Shape Profiles Across GMS Clusters")
-  
-  
-  pdf(glue("{outdir}/shape_grid_plot.pdf"), height = 12, width = 12)
-  print(shape_grid_plt)
-  invisible(dev.off())
-}
-
-
-# Comparative GO graphs grid
-make_go_graph_grid_plot <- function (plt_list) {
-  # TODO in python?
-  NULL
-}
-
-
-# Comparative stacked bar (proportion of proteins representing each taxon) grid
-make_prop_repr_grid_plot <- function (plt_list) {
-  prop_repr_plts <- future_lapply(plt_list, function (cluster_plots) {
-    cluster_plots$prop_repr_plot
-  })
-  prop_repr_grid_plt <- wrap_plots(prop_repr_plts) +
-    plot_layout(guides = "collect") +
-    plot_annotation(
-      title = "Proportions of GMS Cluster Proteins Belonging To Each Taxa"
-    )
-  pdf(glue("{outdir}/prop_repr_grid_plot.pdf"), height = 12, width = 12)
-  print(prop_repr_grid_plt)
-  invisible(dev.off())
-}
-
-
-# Comparative "proportion per taxa dedicated" bar plots grid
-make_perc_ded_grid_plot <- function (plt_list) {
-  perc_ded_plts <- future_lapply(plt_list, function (cluster_plots) {
-    cluster_plots$perc_ded_plot
-  })
-  perc_ded_grid_plt <- wrap_plots(perc_ded_plts) +
-    plot_layout(guides = "collect") +
-    plot_annotation(
-      title = "Proportions of Taxon Proteins Assigned to GMS Clusters"
-    )
-  pdf(glue("{outdir}/perc_ded_grid_plot.pdf"), height = 12, width = 12)
-  print(perc_ded_grid_plt)
-  invisible(dev.off())
-}
-
-
-# GMS cluster summary grid
-make_gms_cluster_summary_plots <- function (plt_list) {
-  # TODO
-  NULL
-}
-
-
-
-
 ### MAIN ------------------------------------------------------------------
 
 main <- function () {
@@ -321,11 +253,6 @@ main <- function () {
   
   log_info("Making grid plots ...")
   individual_plots <- get_plots(df) # keyed by GMS cluster ID, then by plot type
-  make_shape_grid_plot(individual_plots)
-  #make_go_graph_grid_plot(individual_plots)
-  #make_prop_repr_grid_plot(individual_plots)
-  #make_perc_ded_grid_plot(individual_plots)
-  #make_gms_cluster_summary_plots(individual_plots)
   
   log_info("Done!")
 }
