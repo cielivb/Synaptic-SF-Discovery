@@ -25,26 +25,9 @@ cluster_df_path = Path(
 )
 cluster_df = pd.read_csv(str(cluster_df_path))
 
-
 # Read in GO ID metadata dataframe (maps GO IDs to GO names/descriptions)
 go_metadata_path = Path(f"results/1_filter_proteins/go_metadata.csv")
-go_metadata_df = pd.read_csv(
-    str(go_metadata_path), dtype={"meta": "string"}, engine = "python"
-)
-
-def extract_namespace(meta_str):
-    """ The namespace is stuck inside a string representation of a python dict """
-    try:
-        meta = ast.literal_eval(meta_str)
-        bpv = meta.get("basicPropertyValues", [])
-        if bpv:
-            return bpv[0].get("val")
-        return None
-    except Exception:
-        return None
-
-go_metadata_df["namespace"] = go_metadata_df["meta"].apply(extract_namespace)
-go_metadata_df.to_csv(f"results/5_make_visual_summaries/cluster_dfs/ns_{CLUSTER_ID}.csv")
+go_metadata_df = pd.read_csv(str(go_metadata_path))
 
 # Read in GO module members df (maps GO IDs to their GO modules/GO ID clusters)
 go_module_df_path = Path(
@@ -65,7 +48,6 @@ go_presence_df = pd.read_csv(str(go_presence_df_path))
 
 # Get dataframe containing GO ID, label, namespace, and GO module
 go_metadata_df = go_metadata_df.merge(go_module_df, on = "go_id", how = "inner")
-go_metadata_df = go_metadata_df[["go_id", "lbl", "namespace", "module"]]
 go_metadata_df = go_metadata_df.rename(columns={"lbl": "label"})
 
 # Get dataframe containing only rows present in cluster dataframe, and only GO

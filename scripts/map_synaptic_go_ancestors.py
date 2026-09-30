@@ -52,7 +52,8 @@ for go_id in target_go_ids:
     if go_id in go_graph.nodes:
         attrs = go_graph.nodes[go_id]
         row = {"go_id": go_id}
-        row.update(attrs) # add node metadata to row dict
+        row.update({"lbl": attrs["lbl"]})
+        row.update({"namespace": attrs["meta"]["basicPropertyValues"][0]["val"]})
         rows.append(row)
 metadata_df = pd.DataFrame(rows)
 metadata_df.to_csv("results/1_filter_proteins/go_metadata.csv", index=False)

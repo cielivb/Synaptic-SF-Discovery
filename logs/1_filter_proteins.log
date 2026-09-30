@@ -1,16 +1,16 @@
-INFO [2026-09-22 22:08:39] Cleaning GO Slim Synapse data ...
-INFO [2026-09-22 22:08:39] Mapping synaptic GO IDs to ancestor GO IDs ...
-INFO [2026-09-22 22:08:42] Finding proteins associated with neuron-neuron synapses ...
-INFO [2026-09-22 22:08:46] fly: 249585 annotations & 12610 proteins before filter
-INFO [2026-09-22 22:08:46] fly: 18417 annotations & 52 proteins after filter
-INFO [2026-09-22 22:08:47] zebrafish: 280718 annotations & 23343 proteins before filter
-INFO [2026-09-22 22:08:47] worm: 168507 annotations & 12021 proteins before filter
-INFO [2026-09-22 22:08:48] worm: 10705 annotations & 31 proteins after filter
-INFO [2026-09-22 22:08:48] zebrafish: 17274 annotations & 50 proteins after filter
-INFO [2026-09-22 22:08:49] human: 1111951 annotations & 19678 proteins before filter
-INFO [2026-09-22 22:08:49] rat: 939513 annotations & 20016 proteins before filter
-INFO [2026-09-22 22:08:50] human: 48600 annotations & 133 proteins after filter
-INFO [2026-09-22 22:08:50] mouse: 1143576 annotations & 21439 proteins before filter
-INFO [2026-09-22 22:08:50] rat: 30359 annotations & 78 proteins after filter
-INFO [2026-09-22 22:08:50] mouse: 30097 annotations & 78 proteins after filter
-INFO [2026-09-22 22:08:50] Protein filtration script done
+INFO [2026-09-30 18:38:52] Cleaning GO Slim Synapse data ...
+INFO [2026-09-30 18:38:53] Mapping synaptic GO IDs to ancestor GO IDs ...
+INFO [2026-09-30 18:38:57] Finding proteins associated with neuron-neuron synapses ...
+INFO [2026-09-30 18:39:02] fly: 249585 annotations & 12610 proteins before filter
+INFO [2026-09-30 18:39:02] fly: 18417 annotations & 52 proteins after filter
+INFO [2026-09-30 18:39:04] zebrafish: 280718 annotations & 23343 proteins before filter
+INFO [2026-09-30 18:39:04] worm: 168507 annotations & 12021 proteins before filter
+INFO [2026-09-30 18:39:04] worm: 10705 annotations & 31 proteins after filter
+INFO [2026-09-30 18:39:04] zebrafish: 17274 annotations & 50 proteins after filter
+INFO [2026-09-30 18:39:06] human: 1111951 annotations & 19678 proteins before filter
+INFO [2026-09-30 18:39:06] rat: 939513 annotations & 20016 proteins before filter
+INFO [2026-09-30 18:39:06] human: 48600 annotations & 133 proteins after filter
+INFO [2026-09-30 18:39:07] rat: 30359 annotations & 78 proteins after filter
+INFO [2026-09-30 18:39:07] mouse: 1143576 annotations & 21439 proteins before filter
+INFO [2026-09-30 18:39:07] mouse: 30097 annotations & 78 proteins after filter
+INFO [2026-09-30 18:39:07] Protein filtration script done
