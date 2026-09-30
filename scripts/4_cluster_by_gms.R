@@ -167,9 +167,9 @@ get_2x7_grid_layout <- function () {
 get_umap_embedding <- function (features) {
   set.seed(254)
   umap(
-    features, n_neighbors = 15, min_dist = 0.2,
+    features, n_neighbors = 15, min_dist = 0.3,
     n_components = 2, metric = "euclidean",
-    init = "pca", spread = 2.5
+    init = "pca", spread = 3
   )
 }
 

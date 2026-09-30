@@ -10,6 +10,7 @@ log_file <- "logs/3_extract_go_module_scores.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 
+library(cluster)
 suppressPackageStartupMessages(library(dendextend))
 library(dynamicTreeCut)
 library(ggplot2)
@@ -238,19 +239,48 @@ log_info("Finding GO modules ...")
 dissimilarity_matrix <- 1 - wTOM_matrix
 tree <- hclust(as.dist(dissimilarity_matrix), method = "average")
 
+
 # Cut into modules and plot dendrogram with associated modules
 modules <- cutreeDynamic(
   dendro = tree,
   distM = dissimilarity_matrix,
-  deepSplit = 2, # Want fewer ultra-fine-grain modules
+  deepSplit = 2, # want fewer ultra-fine-grain modules
   pamRespectsDendro = TRUE, # re-assign borderline GO IDs if helpful
-  minClusterSize = 5 # Produces a relatively coherent clustering
+  minClusterSize = 5
 )
+
+
+# Remove GO IDs that are still borderline (silhouette width < 0.1)
+sil <- silhouette(
+  as.integer(as.factor(modules)), 
+  dist = as.dist(dissimilarity_matrix)
+)
+sil_widths <- sil[, "sil_width"] # get silhouette widths per GO ID
+names(sil_widths) <- rownames(wTOM_matrix)
+borderline_ids <- names(sil_widths)[sil_widths < 0.1]
+modules_filtered <- modules
+modules_filtered[borderline_ids] <- NA
+
+# Enforce minimum module size
+module_sizes <- table(modules_filtered)
+tiny_modules <- as.integer(names(module_sizes[module_sizes < 5]))
+modules_filtered[modules_filtered %in% tiny_modules] <- NA
+
+# Rename module ID names to avoid any gaps
+old_ids <- sort(unique(modules_filtered[!is.na(modules_filtered)]))
+new_ids <- seq_along(old_ids)
+id_map <- setNames(new_ids, old_ids)
+modules_renamed <- modules_filtered
+modules_renamed[!is.na(modules_filtered)] <- id_map[
+  as.character(modules_filtered[!is.na(modules_filtered)])
+]
+
+modules <- factor(modules_renamed, levels = new_ids)
 
 
 # For visualisation, create dendrogram, assigning empty modules to a dedicated 
 # NA module
-modules_ints <- as.integer(factor(modules))
+modules_ints <- as.integer(modules)
 module_NA <- max(modules_ints, na.rm = TRUE) + 1
 modules_ints[is.na(modules_ints)] <- module_NA
 names(modules_ints) <- rownames(wTOM_matrix)
