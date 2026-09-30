@@ -4,8 +4,9 @@ channels:
 dependencies:
   - r-base=4.6.1
   - python=3.13.15
-  - libuv # WGCNA system dependency
   - pandas
-  - networkx
   - matplotlib
   - pathlib
+  - networkx
+  - graphviz
+  - pygraphviz

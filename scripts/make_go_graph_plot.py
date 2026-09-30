@@ -20,16 +20,20 @@ CLUSTER_ID = args.cluster_id
 ### Read in and wrangle initial/pre-join dataframes -----------------------
 
 # Read in cluster dataframe
-cluster_df_path = Path(f"results/5_make_visual_summaries/{CLUSTER_ID}.csv")
+cluster_df_path = Path(
+  f"results/5_make_visual_summaries/cluster_dfs/{CLUSTER_ID}.csv"
+)
 cluster_df = pd.read_csv(str(cluster_df_path))
 
 
 # Read in GO ID metadata dataframe (maps GO IDs to GO names/descriptions)
 go_metadata_path = Path(f"results/1_filter_proteins/go_metadata.csv")
-go_metadata_df = pd.read_csv(str(go_metadata_path))
+go_metadata_df = pd.read_csv(
+    str(go_metadata_path), dtype={"meta": "string"}, engine = "python"
+)
 
 def extract_namespace(meta_str):
-  """ The namespace is stuck inside a string representation of a python dict """
+    """ The namespace is stuck inside a string representation of a python dict """
     try:
         meta = ast.literal_eval(meta_str)
         bpv = meta.get("basicPropertyValues", [])
@@ -40,8 +44,7 @@ def extract_namespace(meta_str):
         return None
 
 go_metadata_df["namespace"] = go_metadata_df["meta"].apply(extract_namespace)
-go_metadata_df = go_metadata_df[["go_id", "lbl", "namespace"]]
-go_metadata_df = go_metadata_df.rename({"label": "lbl"})
+go_metadata_df.to_csv(f"results/5_make_visual_summaries/cluster_dfs/ns_{CLUSTER_ID}.csv")
 
 # Read in GO module members df (maps GO IDs to their GO modules/GO ID clusters)
 go_module_df_path = Path(
@@ -62,6 +65,8 @@ go_presence_df = pd.read_csv(str(go_presence_df_path))
 
 # Get dataframe containing GO ID, label, namespace, and GO module
 go_metadata_df = go_metadata_df.merge(go_module_df, on = "go_id", how = "inner")
+go_metadata_df = go_metadata_df[["go_id", "lbl", "namespace", "module"]]
+go_metadata_df = go_metadata_df.rename(columns={"lbl": "label"})
 
 # Get dataframe containing only rows present in cluster dataframe, and only GO
 # ID columns where GO ID is present in at least one of these rows
@@ -71,16 +76,19 @@ keep_cols = [c for c in go_cols if cluster_df[c].any()] # >=1 non-zero val
 cluster_go_df = cluster_df.drop(
   columns=[c for c in cluster_df.columns if c not in keep_cols]
 )
+cluster_go_df = cluster_go_df.astype(int)
 
 # Compute GO ID frequencies (percentage of proteins with GO ID) in cluster
-go_freq_df = cluster_df.mean().mul(100).reset_index()
+go_freq_df = cluster_go_df.mean().mul(100).reset_index()
 go_freq_df.columns = ["go_id", "percentage"]
 
 # Remove GO IDs with percentage less than 10% to avoid clutter
 go_freq_df = go_freq_df[go_freq_df["percentage"] >= 10]
 
 # Merge GO ID percentage dataframe with GO metadata dataframe
-cluster_go_df = go_freq_df.merge(go_metadata_df, on = "go_id", how = "left")
+cluster_go_df = go_freq_df.merge(go_metadata_df, on = "go_id", how = "inner")
+#cluster_go_df = cluster_go_df.dropna(subset=["namespace"])
+cluster_go_df.to_csv(f"results/5_make_visual_summaries/cluster_dfs/merged_{CLUSTER_ID}.csv")
 
 
 
@@ -90,35 +98,35 @@ cluster_go_df = go_freq_df.merge(go_metadata_df, on = "go_id", how = "left")
 # Read in JSON mapping GO IDs to lists of ancestors
 json_path = Path("results/1_filter_proteins/synaptic_go_ancestors.json")
 with open(json_path) as file:
-  ancestor_map = json.load(file)
+    ancestor_map = json.load(file)
 
 G = nx.DiGraph()
 
 # Add nodes plus node metadata
 for _, row in cluster_go_df.iterrows():
     G.add_node(
-      row["go_id"], 
-      label = row["label"], namespace = row["namespace"],
-      module = row["module"], percentage = row["percentage"]
+        row["go_id"], 
+        label = row["label"], namespace = row["namespace"],
+        module = row["module"], percentage = row["percentage"]
     )
 
 # Add DAG edges connecting nodes to closest ancestors
 for child, ancestors in ancestor_map.items():
-  valid_ancestors = set([a for a in ancestors if a in cluster_go_df["go_id"]]) 
-  keep_ancestors = valid_ancestors.copy()
+    valid_ancestors = set([a for a in ancestors if a in cluster_go_df["go_id"]]) 
+    keep_ancestors = valid_ancestors.copy()
   
-  # Iteratively remove ancestors as closer ancestors are discovered
-  # That is, if c (child) -> b, and b -> a, drop c -> a
-  for b in valid_ancestors:
-    # We know c -> b by definition of b being an ancestor of c
-    for a in valid_ancestors:
-      if a in ancestor_map[b]:
-        if a in keep_ancestors:
-          keep_ancestors.remove(a)
+    # Iteratively remove ancestors as closer ancestors are discovered
+    # That is, if c (child) -> b, and b -> a, drop c -> a
+    for b in valid_ancestors:
+        # We know c -> b by definition of b being an ancestor of c
+        for a in valid_ancestors:
+            if a in ancestor_map[b]:
+                if a in keep_ancestors:
+                    keep_ancestors.remove(a)
           
-  # Add DAG edges between remaining ancestors in keep_ancestors and child
-  for ancestor in keep_ancestors:
-    G.add_edge(ancestor, child)
+    # Add DAG edges between remaining ancestors in keep_ancestors and child
+    for ancestor in keep_ancestors:
+        G.add_edge(ancestor, child)
 
 
 
@@ -127,9 +135,17 @@ for child, ancestors in ancestor_map.items():
 
 A = to_agraph(G)
 
-go_module_cmap_path = Path("results/5_make_visual_summaries/go_module_colours.csv")
+go_module_cmap_path = Path(
+  "results/5_make_visual_summaries/go_module_colours.csv"
+)
 go_module_cmap_df = pd.read_csv(str(go_module_cmap_path))
-module_to_colour = dict(zip(df.module, df.colour))
+go_module_cmap_df["module"] = (
+    go_module_cmap_df["module"]
+    .str.replace("module_", "", regex=False)
+    .astype(int)
+)
+
+module_to_colour = dict(zip(go_module_cmap_df.module, go_module_cmap_df.colour))
 
 namespace_to_linestyle = {
     "biological_process": "solid",
@@ -142,11 +158,12 @@ for meta_node in G.nodes:
     node = A.get_node(meta_node)
     data = G.nodes[meta_node]
 
-    # Node box properties
+    # Node box outline properties
     node.attr["shape"] = "box"
-    node.attr["fillcolor"] = module_to_colour[data["module"]]
-    node.attr["style"] = "filled"
-    node.attr["style"] += "," + namespace_to_linestyle[data["namespace"]]
+    node.attr["color"] = module_to_colour[data["module"]]  # outline colour
+    node.attr["style"] = namespace_to_linestyle[data["namespace"]]
+    node.attr["style"] += ",rounded"
+    node.attr["penwidth"] = "3"  # box outline width
 
     # Text properties
     node.attr["fontsize"] = str(10 + data["percentage"] * 0.5)
@@ -154,7 +171,7 @@ for meta_node in G.nodes:
 
 # Render plot
 A.layout("dot") # hierarchical DAG layout
-A.draw(f"results/5_make_visual_summaries/gms_{CLUSTER_ID}_go_dag.pdf")
+A.draw(f"results/5_make_visual_summaries/gms_{CLUSTER_ID}_go_dag.svg")
 
 
 

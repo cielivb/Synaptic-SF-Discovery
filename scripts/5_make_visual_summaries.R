@@ -5,8 +5,8 @@ outdir <- "results/5_make_visual_summaries"
 log_file <- "logs/5_make_visual_summaries.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+dir.create(glue("{outdir}/cluster_dfs"), showWarnings = FALSE)
 
-library(cowplot)
 library(ggplot2)
 library(GGally)
 library(tidyr)
@@ -262,7 +262,7 @@ main <- function () {
   log_info("Making main plot ...")
   plot_gms_cluster_evo()
   
-  log_info("Making grid plots ...")
+  log_info("Making individual aspect plots ...")
   individual_plots <- get_plots(df) # keyed by GMS cluster ID, then by plot type
   
   log_info("Done!")
