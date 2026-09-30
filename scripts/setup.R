@@ -31,7 +31,7 @@ dir.create("data", showWarnings = FALSE)
 dir.create("results", showWarnings = FALSE)
 result_dirs <- list(
   "1_filter_proteins", "2_extract_shape_features", 
-  "3_extract_functional_features", "4_cluster_by_gms",
+  "3_extract_go_module_scores", "4_cluster_by_gms",
   "5_find_enriched_go_ids", "6_make_visual_summaries"
 )
 lapply(result_dirs, function (d) {

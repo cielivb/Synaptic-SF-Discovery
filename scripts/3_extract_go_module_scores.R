@@ -5,8 +5,8 @@
 # containing taxon, uniprot, and module scores representing proportion of module
 # GO IDs associated with that protein.
 
-outdir <- "results/3_extract_functional_features"
-log_file <- "logs/3_extract_functional_features.log"
+outdir <- "results/3_extract_go_module_scores"
+log_file <- "logs/3_extract_go_module_scores.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 
@@ -242,7 +242,7 @@ tree <- hclust(as.dist(dissimilarity_matrix), method = "average")
 modules <- cutreeDynamic(
   dendro = tree,
   distM = dissimilarity_matrix,
-  deepSplit = 3, # Want to err on the side of more fine-grained modules
+  deepSplit = 2, # Want fewer ultra-fine-grain modules
   pamRespectsDendro = TRUE, # re-assign borderline GO IDs if helpful
   minClusterSize = 5 # Produces a relatively coherent clustering
 )
@@ -331,24 +331,6 @@ log_info(
   {num_go_ids_aft_filt} GO IDs after variance filtering; \
   {num_modules} functional modules detected")
 )
-
-
-
-
-### Create GO Network graph coloured by module ----------------------------
-
-# The objective is to understand how GO modules sit relative to each other - 
-# e.g., are any modules nested within other modules, or scattered?
-
-# TODO
-
-
-
-### Create GO network graphs per GO module --------------------------------
-
-# What GO terms make up each module, and how do they sit relative to each other?
-
-# TODO
 
 
 

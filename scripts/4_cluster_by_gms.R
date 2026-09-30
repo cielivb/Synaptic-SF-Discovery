@@ -28,7 +28,7 @@ shape_df <- read_csv(
   col_names = TRUE, show_col_types = FALSE
 )
 go_module_df <- read_csv(
-  "results/3_extract_functional_features/functional_features.csv",
+  "results/3_extract_go_module_scores/functional_features.csv",
   col_names = TRUE, show_col_types = FALSE) |>
   select(taxon, uniprot, starts_with("module_")
 )
@@ -167,9 +167,9 @@ get_2x7_grid_layout <- function () {
 get_umap_embedding <- function (features) {
   set.seed(254)
   umap(
-    features, n_neighbors = 12, min_dist = 0.1,
+    features, n_neighbors = 18, min_dist = 0.1,
     n_components = 2, metric = "euclidean",
-    init = "pca", spread = 3
+    init = "pca", spread = 2
   )
 }
 
