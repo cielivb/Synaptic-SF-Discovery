@@ -1,6 +1,7 @@
 """ Create a GO ID graph depicting most common GO IDs a given GMS cluster """
 
 import argparse
+import json
 import networkx as nx
 import pandas as pd
 from pathlib import Path
@@ -69,6 +70,62 @@ keep_cols = [c for c in go_cols if cluster_df[c].any()] # >=1 non-zero val
 cluster_go_df = cluster_df.drop(
   columns=[c for c in cluster_df.columns if c not in keep_cols]
 )
+
+# Compute GO ID frequencies (percentage of proteins with GO ID) in cluster
+go_freq_df = cluster_df.mean().mul(100).reset_index()
+go_freq_df.columns = ["go_id", "percentage"]
+
+# Remove GO IDs with percentage less than 10% to avoid clutter
+go_freq_df = go_freq_df[go_freq_df["percentage"] >= 10]
+
+# Merge GO ID percentage dataframe with GO metadata dataframe
+cluster_go_df = go_freq_df.merge(go_metadata_df, on = "go_id", how = "left")
+
+
+
+
+### Create ancestor-descendant DAG ----------------------------------------
+
+# Read in JSON mapping GO IDs to lists of ancestors
+json_path = Path("results/1_filter_proteins/synaptic_go_ancestors.json")
+with open(json_path) as file:
+  ancestor_map = json.load(file)
+
+G = nx.DiGraph()
+
+# Add nodes plus node metadata
+for _, row in cluster_go_df.iterrows():
+    G.add_node(
+      row["go_id"], 
+      label = row["label"], namespace = row["namespace"],
+      module = row["module"], percentage = row["percentage"]
+    )
+
+# Add DAG edges connecting nodes to closest ancestors
+for child, ancestors in ancestor_map.items():
+  valid_ancestors = set([a for a in ancestors if a in cluster_go_df["go_id"]]) 
+  keep_ancestors = valid_ancestors.copy()
+  
+  # Iteratively remove ancestors as closer ancestors are discovered
+  # That is, if c (child) -> b, and b -> a, drop c -> a
+  for b in valid_ancestors:
+    # We know c -> b by definition of b being an ancestor of c
+    for a in valid_ancestors:
+      if a in ancestor_map[b]:
+        if a in keep_ancestors:
+          keep_ancestors.remove(a)
+          
+  # Add DAG edges between remaining ancestors in keep_ancestors and child
+  for ancestor in keep_ancestors:
+    G.add_edge(ancestor, child)
+
+
+
+  
+### Make a cool plot! -----------------------------------------------------
+
+
+
 
 
 
