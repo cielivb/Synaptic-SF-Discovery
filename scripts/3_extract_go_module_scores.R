@@ -276,33 +276,38 @@ modules_renamed[!is.na(modules_filtered)] <- id_map[
 ]
 
 modules <- factor(modules_renamed, levels = new_ids)
+modules_ints <- as.integer(modules)
+names(modules_ints) <- rownames(wTOM_matrix)
 
+
+# Omitting below code for now since tree now has different modules to modules
 
 # For visualisation, create dendrogram, assigning empty modules to a dedicated 
 # NA module
-modules_ints <- as.integer(modules)
-module_NA <- max(modules_ints, na.rm = TRUE) + 1
-modules_ints[is.na(modules_ints)] <- module_NA
-names(modules_ints) <- rownames(wTOM_matrix)
-dend <- as.dendrogram(tree)
-dend <- set_labels(dend, rep("", length(labels(dend))))
+#module_NA <- max(modules_ints, na.rm = TRUE) + 1
+#modules_ints[is.na(modules_ints)] <- module_NA
+#dend <- as.dendrogram(tree)
+#dend <- set_labels(dend, rep("", length(labels(dend))))
 
-palette <- viridis::viridis(length(unique(modules_ints)))
-module_colours <- palette[modules_ints]
+#palette <- viridis::viridis(length(unique(modules_ints)))
+#module_colours <- palette[modules_ints]
 
 # Plot
-svg(glue("{outdir}/go_modules_dendrogram.svg"), width = 16, height = 12)
-par(mar = c(16, 4, 4, 4))
-plot(dend, main = "GO ID Dendrogram")
-colored_bars(module_colours, dend, rowLabels = "Module", y_scale = 0.2)
-invisible(dev.off())
+#svg(glue("{outdir}/go_modules_dendrogram.svg"), width = 16, height = 12)
+#par(mar = c(16, 4, 4, 4))
+#plot(dend, main = "GO ID Dendrogram")
+#colored_bars(module_colours, dend, rowLabels = "Module", y_scale = 0.2)
+#invisible(dev.off())
 
 
 # Get and export mapping between module ID and member GO IDs
-go_module_members <- tibble(module = modules_ints, go_id = names(modules_ints))
+go_module_members <- tibble(
+  module = modules_ints, go_id = names(modules_ints)
+  ) |>
+  filter(!is.na(module)) |> # drop all NA module assignments
+  group_by(module) |>
+  summarise(go_ids = list(go_id), .groups = "drop")
 write_csv(go_module_members, glue("{outdir}/go_module_members.csv"))
-go_module_members <- go_module_members |>
-  group_by(module) |> summarise(go_ids = list(go_id), .groups = "drop")
 
 
 
