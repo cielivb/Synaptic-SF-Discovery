@@ -248,23 +248,33 @@ modules <- cutreeDynamic(
   pamRespectsDendro = TRUE, # re-assign borderline GO IDs if helpful
   minClusterSize = 5
 )
+names(modules) <- rownames(wTOM_matrix)
+sink(glue("{outdir}/modules.txt"))
+print(modules)
+sink()
 
 
-# Remove GO IDs that are still borderline (silhouette width < 0.1)
+# Remove GO IDs that are still borderline (silhouette width < 0)
 sil <- silhouette(
   as.integer(as.factor(modules)), 
   dist = as.dist(dissimilarity_matrix)
 )
 sil_widths <- sil[, "sil_width"] # get silhouette widths per GO ID
 names(sil_widths) <- rownames(wTOM_matrix)
-borderline_ids <- names(sil_widths)[sil_widths < 0.1]
+borderline_ids <- names(sil_widths)[sil_widths < 0]
 modules_filtered <- modules
 modules_filtered[borderline_ids] <- NA
+sink(glue("{outdir}/modules_filtered.txt"))
+print(modules_filtered)
+sink()
 
 # Enforce minimum module size
 module_sizes <- table(modules_filtered)
 tiny_modules <- as.integer(names(module_sizes[module_sizes < 5]))
 modules_filtered[modules_filtered %in% tiny_modules] <- NA
+sink(glue("{outdir}/modules_filtered_2.txt"))
+print(modules_filtered)
+sink()
 
 # Rename module ID names to avoid any gaps
 old_ids <- sort(unique(modules_filtered[!is.na(modules_filtered)]))
@@ -274,40 +284,23 @@ modules_renamed <- modules_filtered
 modules_renamed[!is.na(modules_filtered)] <- id_map[
   as.character(modules_filtered[!is.na(modules_filtered)])
 ]
+sink(glue("{outdir}/modules_renamed.txt"))
+print(modules_renamed)
+sink()
 
-modules <- factor(modules_renamed, levels = new_ids)
-modules_ints <- as.integer(modules)
-names(modules_ints) <- rownames(wTOM_matrix)
-
-
-# Omitting below code for now since tree now has different modules to modules
-
-# For visualisation, create dendrogram, assigning empty modules to a dedicated 
-# NA module
-#module_NA <- max(modules_ints, na.rm = TRUE) + 1
-#modules_ints[is.na(modules_ints)] <- module_NA
-#dend <- as.dendrogram(tree)
-#dend <- set_labels(dend, rep("", length(labels(dend))))
-
-#palette <- viridis::viridis(length(unique(modules_ints)))
-#module_colours <- palette[modules_ints]
-
-# Plot
-#svg(glue("{outdir}/go_modules_dendrogram.svg"), width = 16, height = 12)
-#par(mar = c(16, 4, 4, 4))
-#plot(dend, main = "GO ID Dendrogram")
-#colored_bars(module_colours, dend, rowLabels = "Module", y_scale = 0.2)
-#invisible(dev.off())
-
+#modules <- factor(modules_renamed, levels = new_ids)
+#modules_ints <- as.integer(modules)
+#names(modules_ints) <- names(modules_renamed)
+modules_ints <- as.integer(modules_renamed)
+names(modules_ints) <- names(modules_renamed) 
+sink(glue("{outdir}/modules_ints.txt"))
+print(modules_ints)
+sink()
 
 # Get and export mapping between module ID and member GO IDs
-go_module_members <- tibble(
-  module = modules_ints, go_id = names(modules_ints)
-  ) |>
-  filter(!is.na(module)) |> # drop all NA module assignments
-  group_by(module) |>
-  summarise(go_ids = list(go_id), .groups = "drop")
-write_csv(go_module_members, glue("{outdir}/go_module_members.csv"))
+module_go_df <- stack(modules_ints)
+colnames(module_go_df) <- c("module", "go_id")
+write_csv(module_go_df, glue("{outdir}/go_module_members.csv"))
 
 
 
@@ -317,14 +310,38 @@ write_csv(go_module_members, glue("{outdir}/go_module_members.csv"))
 # The module score represents the proportion of GO IDs associated with a given
 # module that are also associated with a given protein.
 
-
-# For each module, take the GO ID columns from go_presence_matrix_f, then
-# compute the proportion of GO IDs present
-module_scores <- sapply(go_module_members$go_ids, function(module_go_ids) {
+# Compute module scores for valid modules
+module_go_df_clean <- module_go_df |> filter(!is.na(module))
+modules <- sort(unique(module_go_df_clean$module))
+module_score_list <- lapply(modules, function(m) {
+  module_go_ids <- module_go_df_clean$go_id[module_go_df_clean$module == m]
   module_go_cols <- go_presence_matrix_f[, module_go_ids, drop = FALSE]
-  return(rowMeans(module_go_cols)) # mean of binary values -> proportion present
+  rowMeans(module_go_cols) # rowMeans of binary vals -> per-protein proportion
 })
-colnames(module_scores) <- paste0("module_", go_module_members$module)
+module_scores <- tibble(
+  !!!setNames(module_score_list, paste0("module_", modules))
+)
+colnames(module_scores) <- paste0("module_", modules)
+write_csv(module_scores, glue("{outdir}/gms.csv"))
+
+
+# Tangent: Define a colour map for each module (needed in a later script)
+go_modules <- names(module_scores)
+sink(glue("{outdir}/go_modules.txt"))
+print(go_modules)
+sink()
+go_module_colour_map <- setNames(
+  viridis::viridis(length(go_modules)), go_modules
+)
+go_module_cmap_df <- data.frame(
+  module = names(go_module_colour_map),
+  colour = unname(go_module_colour_map),
+  stringsAsFactors = FALSE
+)
+write.csv(
+  go_module_cmap_df, glue("{outdir}/go_module_cmap.csv"), row.names = FALSE
+)
+
 
 # Merge module_scores into go_presence_matrix_f to get a complete
 # functional feature set with raw GO presence/absence and module score data
@@ -332,7 +349,7 @@ functional_features <- inner_join( # join on uniprot
   ann_df |> distinct(uniprot, taxon), 
   bind_cols(go_presence_matrix_f, tibble(as.data.frame(module_scores)))
 )
-write_csv(functional_features, glue("{outdir}/functional_features.csv"))
+write_csv(functional_features, glue("{outdir}/go_module_scores.csv"))
 
 
 # Visualise module score distributions over entire dataset

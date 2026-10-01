@@ -292,6 +292,13 @@ if (0 %in% gms_clusters) { # grey out noise points only if present
     gms_clusters
   )
 }
+# Save colour map dataframe to csv just in case I need it later
+gms_cluster_cmap_df <- data.frame(
+  gms_cluster = names(colour_map), colour = unname(colour_map),
+  stringsAsFactors = FALSE
+)
+write.csv(gms_cluster_cmap_df, glue("{outdir}/gms_cluster_cmap.csv"))
+
 
 # Recreate grid plot, colouring proteins by GO Module Score Cluster membership
 plots <- list()
