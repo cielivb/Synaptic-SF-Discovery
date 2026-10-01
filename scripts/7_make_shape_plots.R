@@ -3,4 +3,124 @@
 # in that GMS cluster. 
 # Additionally, create a grid plot containing the above plots for ease of comparison.
 
-# TODO
+outdir <- "results/7_make_shape_plots"
+log_file <- "logs/7_make_shape_plots.log"
+source("scripts/setup.R")
+configure_logger(log_file)
+plan(multisession, workers = parallel::detectCores(logical = FALSE))
+
+
+library(ggplot2)
+library(GGally)
+library(magick)
+
+
+
+
+# Create parallel coordinates plot showing shape features of proteins in a GMS 
+# cluster, where lines are styled by taxon
+make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
+  
+  shape_features <- cluster_df |>
+    select(taxon, starts_with("scaled_")) |>
+    rename(
+      "Mean pLDDT" = scaled_mad_mean_pLDDT,
+      "Eccentricity" = scaled_mad_eccentricity_u,
+      "Coefficient of\nVariation" = scaled_mad_coeff_var_u,
+      "Log(Kurtosis)" = scaled_mad_log_kurtosis_u,
+      "Log(Length)" = scaled_mad_log_length_u
+    )
+  present_taxa <- unique(cluster_df$taxon)
+  line_map <- styles$taxa_line[present_taxa]
+  colour_map <- styles$taxa_colour[present_taxa]
+  
+  # Build full plot
+  full_plt <- ggparcoord(shape_features,
+                         columns = 2:6, groupColumn = "taxon",
+                         scale = "uniminmax", showPoints = TRUE, alphaLines = 0.4,
+                         mapping = aes(linetype = taxon), boxplot = TRUE,
+  ) +
+    scale_linetype_manual(values = line_map) +
+    scale_colour_manual(values = colour_map) +
+    labs(
+      title = glue("Protein Shapes (GMS Cluster {cluster_id})"), 
+      x = "", y = "Min-Max Scaled MAD-adjusted Value",
+      linetype = "Taxon", color = "Taxon"
+    ) +
+    theme_classic() +
+    theme(
+      plot.title = element_text(size = 14, hjust = 0.5),
+      axis.title.y = element_text(margin = margin(r = 10))
+    )
+  
+  # Write full plot to file
+  png(
+    glue("{outdir}/gms_{cluster_id}_protein_shapes_full.png"),
+    width=12, height=8, units="in", res=300, type="cairo"
+  )
+  print(full_plt)
+  invisible(dev.off())
+  
+  # Create base plot (renamed title, no legend) for use in grid plot
+  base_plt <- full_plt +
+    labs(title = glue("Cluster {cluster_id}"), y = "") +
+    theme(legend.position = "none")
+  png(
+    glue("{outdir}/gms_{cluster_id}_protein_shapes.png"), 
+    width=10, height=8, units="in", res=300, type="cairo")
+  print(base_plt)
+  invisible(dev.off())
+  
+}
+
+
+
+
+# Define taxon line style map and colour map
+taxa_line_style_map <- c(
+  Human = "dashed", Mouse = "longdash", Rat = "solid",
+  Fly = "dotted", Worm = "dotdash", Zebrafish = "twodash"
+)
+taxa_colour_map <- c(
+  Human = "#D55E00", Mouse = "#E69F00", Rat = "#F0E442",
+  Fly = "#009E73", Worm = "#56B4E9", Zebrafish = "#CC79A7"
+)
+
+STYLES = list(
+  taxa_line = taxa_line_style_map,
+  taxa_colour = taxa_colour_map
+)
+
+
+
+
+### Create individual shape plots per GMS cluster -------------------------
+
+log_info("Creating shape plots per GMS cluster ...")
+
+df <- read_csv(
+  "results/4_cluster_by_gms/clustered_by_gms.csv",
+  show_col_types = FALSE
+) |> mutate(taxon = stringr::str_to_title(taxon))
+gms_clusters <- unique(sort(df$gms_cluster))
+
+done <- future_lapply(gms_clusters, function (cluster_id, df, outdir, styles) {
+  cluster_df <- df |> filter(gms_cluster == cluster_id)
+  make_shape_plot(cluster_id, cluster_df, outdir, styles)
+}, df = df, outdir = outdir, styles = STYLES)
+
+
+
+
+# Create grid shape plot --------------------------------------------------
+
+log_info("Creating grid shape plot ...")
+
+imgs <- lapply(gms_clusters, function(cluster_id) {
+  image_read(glue("{outdir}/gms_{cluster_id}_protein_shapes.png"))
+})
+
+
+
+log_info("Done!")
+
