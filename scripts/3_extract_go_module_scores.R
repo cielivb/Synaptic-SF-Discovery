@@ -249,9 +249,6 @@ modules <- cutreeDynamic(
   minClusterSize = 5
 )
 names(modules) <- rownames(wTOM_matrix)
-sink(glue("{outdir}/modules.txt"))
-print(modules)
-sink()
 
 
 # Remove GO IDs that are still borderline (silhouette width < 0)
@@ -264,17 +261,11 @@ names(sil_widths) <- rownames(wTOM_matrix)
 borderline_ids <- names(sil_widths)[sil_widths < 0]
 modules_filtered <- modules
 modules_filtered[borderline_ids] <- NA
-sink(glue("{outdir}/modules_filtered.txt"))
-print(modules_filtered)
-sink()
 
 # Enforce minimum module size
 module_sizes <- table(modules_filtered)
 tiny_modules <- as.integer(names(module_sizes[module_sizes < 5]))
 modules_filtered[modules_filtered %in% tiny_modules] <- NA
-sink(glue("{outdir}/modules_filtered_2.txt"))
-print(modules_filtered)
-sink()
 
 # Rename module ID names to avoid any gaps
 old_ids <- sort(unique(modules_filtered[!is.na(modules_filtered)]))
@@ -284,18 +275,9 @@ modules_renamed <- modules_filtered
 modules_renamed[!is.na(modules_filtered)] <- id_map[
   as.character(modules_filtered[!is.na(modules_filtered)])
 ]
-sink(glue("{outdir}/modules_renamed.txt"))
-print(modules_renamed)
-sink()
 
-#modules <- factor(modules_renamed, levels = new_ids)
-#modules_ints <- as.integer(modules)
-#names(modules_ints) <- names(modules_renamed)
 modules_ints <- as.integer(modules_renamed)
 names(modules_ints) <- names(modules_renamed) 
-sink(glue("{outdir}/modules_ints.txt"))
-print(modules_ints)
-sink()
 
 # Get and export mapping between module ID and member GO IDs
 module_go_df <- stack(modules_ints)
@@ -322,14 +304,9 @@ module_scores <- tibble(
   !!!setNames(module_score_list, paste0("module_", modules))
 )
 colnames(module_scores) <- paste0("module_", modules)
-write_csv(module_scores, glue("{outdir}/gms.csv"))
-
 
 # Tangent: Define a colour map for each module (needed in a later script)
 go_modules <- names(module_scores)
-sink(glue("{outdir}/go_modules.txt"))
-print(go_modules)
-sink()
 go_module_colour_map <- setNames(
   viridis::viridis(length(go_modules)), go_modules
 )
