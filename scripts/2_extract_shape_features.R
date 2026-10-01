@@ -339,8 +339,7 @@ mad_df <- mad_df |> select(-taxon) |>
   mutate(across(everything(), min_max_norm, .names = "scaled_{.col}"))
 
 # Merge back onto og_shape_df and write to file
-shape_df <- bind_cols(og_shape_df, mad_df) |>
-  select(taxon, uniprot, starts_with("scaled_"))
+shape_df <- bind_cols(og_shape_df, mad_df)
 write_csv(shape_df, glue("{outdir}/shape_features.csv"), col_names = TRUE)
 
 
