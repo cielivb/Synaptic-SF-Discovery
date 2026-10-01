@@ -28,7 +28,7 @@ shape_df <- read_csv(
   col_names = TRUE, show_col_types = FALSE
 )
 go_module_df <- read_csv(
-  "results/3_extract_go_module_scores/functional_features.csv",
+  "results/3_extract_go_module_scores/go_module_scores.csv",
   col_names = TRUE, show_col_types = FALSE) |>
   select(taxon, uniprot, starts_with("module_")
 )
@@ -167,9 +167,9 @@ get_2x7_grid_layout <- function () {
 get_umap_embedding <- function (features) {
   set.seed(254)
   umap(
-    features, n_neighbors = 15, min_dist = 0.2,
+    features, n_neighbors = 10, min_dist = 0.4,
     n_components = 2, metric = "euclidean",
-    init = "pca", spread = 3
+    init = "pca", spread = 2
   )
 }
 
@@ -256,7 +256,7 @@ log_info("Clustering proteins by cross-taxa GO module scores ...")
 
 # Assign cross-taxa GO module score clusters to each protein
 df_to_cluster <- umapped_dfs[["cross-taxa_GO Module Scores"]]
-hdb <- hdbscan(df_to_cluster |> select(UMAP1, UMAP2), minPts = 10)
+hdb <- hdbscan(df_to_cluster |> select(UMAP1, UMAP2), minPts = 5)
 df_to_cluster$gms_cluster <- hdb$cluster # cluster 0 = noise
 df_to_cluster$gms_cluster_prob <- hdb$membership_prob
 df <- inner_join(df, df_to_cluster) |>
@@ -297,7 +297,7 @@ gms_cluster_cmap_df <- data.frame(
   gms_cluster = names(colour_map), colour = unname(colour_map),
   stringsAsFactors = FALSE
 )
-write.csv(gms_cluster_cmap_df, glue("{outdir}/gms_cluster_cmap.csv"))
+write_csv(gms_cluster_cmap_df, glue("{outdir}/gms_cluster_cmap.csv"))
 
 
 # Recreate grid plot, colouring proteins by GO Module Score Cluster membership
