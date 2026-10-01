@@ -262,6 +262,18 @@ df_to_cluster$gms_cluster_prob <- hdb$membership_prob
 df <- inner_join(df, df_to_cluster) |>
   select(-UMAP1, -UMAP2) # drop umap coordinate columns
 
+# Summarise membership probability distribution
+probs <- df_to_cluster$gms_cluster_prob
+write_csv(
+  tibble(
+    mean = mean(probs), sd = sd(probs), min = min(probs),
+    q1 = quantile(probs, 0.25), median = median(probs),
+    q3 = quantile(probs, 0.75), max = max(probs)
+  ),
+  glue("{outdir}/cluster_membership_prob_stats.csv")
+)
+
+
 # Visualise cross-taxa GO module score cluster membership probabilities to
 # quickly assess clustering confidence
 svg(glue("{outdir}/cross_taxa_go_module_score_cluster_membership_probs.svg"),
