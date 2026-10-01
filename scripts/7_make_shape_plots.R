@@ -10,9 +10,11 @@ configure_logger(log_file)
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
 
+library(png)
+library(grid)
+library(gridExtra)
 library(ggplot2)
 library(GGally)
-library(magick)
 
 
 
@@ -34,7 +36,7 @@ make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
   line_map <- styles$taxa_line[present_taxa]
   colour_map <- styles$taxa_colour[present_taxa]
   
-  # Build full plot
+  # Build full plot (standalone figure to embed in GMS cluster summaries)
   full_plt <- ggparcoord(shape_features,
                          columns = 2:6, groupColumn = "taxon",
                          scale = "uniminmax", showPoints = TRUE, alphaLines = 0.4,
@@ -61,13 +63,34 @@ make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
   print(full_plt)
   invisible(dev.off())
   
-  # Create base plot (renamed title, no legend) for use in grid plot
-  base_plt <- full_plt +
-    labs(title = glue("Cluster {cluster_id}"), y = "") +
-    theme(legend.position = "none")
+  # Create base plot for use in grid plot
+  base_plt <- ggparcoord(shape_features,
+    columns = 2:6, groupColumn = "taxon", scale = "uniminmax", 
+    showPoints = FALSE, alphaLines = 0, # Hide GGAlly points and lines
+    boxplot = TRUE
+  ) +
+    geom_point(aes(color = taxon), size = 2.5) + # add custom large points
+    geom_path( # add custom line style
+      aes(color = taxon, linetype = taxon),
+      linewidth = 1.2, alpha = 1
+    ) +
+    scale_linetype_manual(values = line_map) +
+    scale_colour_manual(values = colour_map) +
+    labs(title = glue("Cluster {cluster_id}"), x = "", y = "") +
+    theme_classic() +
+    theme(
+      legend.position = "none",
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks = element_blank(),
+      plot.title = element_text(size = 12, hjust = 0.5)
+    )
+  
+  # Write base plot to file
   png(
     glue("{outdir}/gms_{cluster_id}_protein_shapes.png"), 
-    width=10, height=8, units="in", res=300, type="cairo")
+    width=10, height=8, units="in", res=300, type="cairo"
+  )
   print(base_plt)
   invisible(dev.off())
   
@@ -117,10 +140,14 @@ done <- future_lapply(gms_clusters, function (cluster_id, df, outdir, styles) {
 log_info("Creating grid shape plot ...")
 
 imgs <- lapply(gms_clusters, function(cluster_id) {
-  image_read(glue("{outdir}/gms_{cluster_id}_protein_shapes.png"))
+  img <- readPNG(glue("{outdir}/gms_{cluster_id}_protein_shapes.png"))
+  rasterGrob(img, interpolate = TRUE)
 })
-
-
-
-log_info("Done!")
+grid <- grid.arrange(grobs = imgs, ncol = 5)
+png(
+  glue("{outdir}/shape_grid.png"),
+  width = 20, height = 16, units = "in", res = 300
+)
+grid.draw(grid)
+dev.off()
 
