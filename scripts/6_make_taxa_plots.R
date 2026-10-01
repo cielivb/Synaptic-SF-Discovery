@@ -15,13 +15,34 @@ configure_logger(log_file)
 
 library(ggplot2)
 
-
-# Read in dataframe
+# Read in dataframe and phylogenetic tree
 df <- read_csv(
   "results/4_cluster_by_gms/clustered_by_gms.csv", show_col_types = FALSE
 )
+tree <- read.tree("data/taxa_tree.nwk")
+p <- ggtree(tree) + theme_tree2()
 
 
 ### Create tile plot illustrating GMS cluster presence/absence per taxa ---
 
-# Create tibble: taxon | module | present
+# Create P/A tibble: taxon | 0 | ... | N (N GMS clusters, values = 1 or 0)
+pa_df <- df |> select(taxon, gms_cluster) |>
+  mutate(present = 1) |> # gms cluster is present in taxon
+  distinct() |>
+  pivot_wider(
+    names_from = gms_cluster,
+    values_from = present,
+    values_fill = 0, # gms cluster absent in taxon
+    names_prefix = "Cluster "
+  )
+
+# Create tile plot with attached phylogenetic tree
+svg(glue("{outdir}/cluster_pa_by_taxa_tile_plot.svg"), height = 10, width = 18)
+plt <- gheatmap(p, pa_df, offset = 0.02, width = 0.8, colnames = TRUE) +
+  scale_fill_manual(values = c("0" = "white", "1" = "#2ECC71")) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+print(plt)
+invisible(dev.off())

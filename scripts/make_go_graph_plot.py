@@ -139,7 +139,7 @@ A.graph_attr.update({
 
 
 go_module_cmap_path = Path(
-  "results/6_make_visual_summaries/go_module_colours.csv"
+  "results/3_extract_go_module_scores/go_module_cmap.csv"
 )
 go_module_cmap_df = pd.read_csv(str(go_module_cmap_path))
 go_module_cmap_df["module"] = (
@@ -178,7 +178,7 @@ for meta_node in G.nodes:
 
 # Render plot
 A.layout("twopi")
-A.draw(f"results/6_make_visual_summaries/gms_{CLUSTER_ID}_go_dag.svg")
+A.draw(f"results/5_describe_gms_cluster_func/gms_{CLUSTER_ID}_go_dag.svg")
 
 
 
