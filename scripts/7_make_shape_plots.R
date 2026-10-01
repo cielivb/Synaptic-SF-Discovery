@@ -24,14 +24,22 @@ library(GGally)
 make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
   
   shape_features <- cluster_df |>
-    select(taxon, starts_with("scaled_")) |>
     rename(
       "Mean pLDDT" = scaled_mad_mean_pLDDT,
       "Eccentricity" = scaled_mad_eccentricity_u,
       "Coefficient of\nVariation" = scaled_mad_coeff_var_u,
       "Log(Kurtosis)" = scaled_mad_log_kurtosis_u,
       "Log(Length)" = scaled_mad_log_length_u
+    ) |>
+    select( # in order in which cols should appear in plot
+      taxon,
+      `Mean pLDDT`,
+      `Log(Length)`,
+      `Eccentricity`,
+      `Coefficient of\nVariation`,
+      `Log(Kurtosis)`
     )
+  
   present_taxa <- unique(cluster_df$taxon)
   line_map <- styles$taxa_line[present_taxa]
   colour_map <- styles$taxa_colour[present_taxa]
@@ -72,7 +80,7 @@ make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
     geom_point(aes(color = taxon), size = 2.5) + # add custom large points
     geom_path( # add custom line style
       aes(color = taxon, linetype = taxon),
-      linewidth = 1.2, alpha = 1
+      linewidth = 1.2, alpha = 0.7
     ) +
     scale_linetype_manual(values = line_map) +
     scale_colour_manual(values = colour_map) +
@@ -83,7 +91,9 @@ make_shape_plot <- function(cluster_id, cluster_df, outdir, styles) {
       axis.text.x = element_blank(),
       axis.text.y = element_blank(),
       axis.ticks = element_blank(),
-      plot.title = element_text(size = 12, hjust = 0.5)
+      panel.border = element_blank(),
+      axis.line = element_blank(),
+      plot.title = element_text(size = 28, hjust = 0.5, margin = margin(b = 4))
     )
   
   # Write base plot to file
@@ -143,11 +153,11 @@ imgs <- lapply(gms_clusters, function(cluster_id) {
   img <- readPNG(glue("{outdir}/gms_{cluster_id}_protein_shapes.png"))
   rasterGrob(img, interpolate = TRUE)
 })
-grid <- grid.arrange(grobs = imgs, ncol = 5)
+grid_plt <- grid.arrange(grobs = imgs, ncol = 5)
 png(
   glue("{outdir}/shape_grid.png"),
   width = 20, height = 16, units = "in", res = 300
 )
-grid.draw(grid)
+grid.draw(grid_plt)
 dev.off()
 
