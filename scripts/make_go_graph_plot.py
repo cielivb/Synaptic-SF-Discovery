@@ -24,7 +24,7 @@ CLUSTER_ID = args.cluster_id
 # (gms_cluster, go_id, prop_in_cluster, prop_in_bg, p_value,
 #  odds_ratio, p_adj, enriched, high_odds)
 cluster_df_path = Path(
-  f"results/5_describe_gms_cluster_func/cluster_dfs/{CLUSTER_ID}.csv"
+    f"results/5_describe_gms_cluster_func/cluster_dfs/{CLUSTER_ID}.csv"
 )
 cluster_df = pd.read_csv(str(cluster_df_path))
 cluster_df = cluster_df[cluster_df["high_odds"]][["go_id", "odds_ratio"]]
@@ -36,14 +36,14 @@ go_metadata_df = go_metadata_df.rename(columns = {"lbl": "label"})
 
 # Read in GO module members df (module, go_id)
 go_module_df_path = Path(
-  "results/3_extract_go_module_scores/go_module_members.csv"
+    "results/3_extract_go_module_scores/go_module_members.csv"
 )
 go_module_df = pd.read_csv(str(go_module_df_path))
 
 # Read in GO ID presence/absence per protein dataframe
 # (uniprot, taxon, GO:0005515, ..., GO:0071881, module_1, ..., module_10)
 go_presence_df_path = Path(
-  "results/3_extract_go_module_scores/go_module_scores.csv"
+    "results/3_extract_go_module_scores/go_module_scores.csv"
 )
 go_presence_df = pd.read_csv(str(go_presence_df_path))
 
@@ -52,7 +52,7 @@ go_presence_df = pd.read_csv(str(go_presence_df_path))
 gms_cluster_assign_path = Path("results/4_cluster_by_gms/clustered_by_gms.csv")
 gms_cluster_assign_df = pd.read_csv(str(gms_cluster_assign_path))
 gms_cluster_proteins_df = gms_cluster_assign_df[
-  gms_cluster_assign_df[gms_cluster] == CLUSTER_ID
+    gms_cluster_assign_df["gms_cluster"] == CLUSTER_ID
 ][["uniprot", "gms_cluster"]]
 
 
@@ -60,14 +60,14 @@ gms_cluster_proteins_df = gms_cluster_assign_df[
 ### Join dataframes -------------------------------------------------------
 
 # (go_id, module, label, namespace, odds_ratio)
-merged = cluster_df
-  .merge(go_module_df, on = "go_id", how = "inner")
-  .merge(go_metadata_df, on = "go_id", how = "inner")
+merged = cluster_df.merge(
+    go_module_df, on = "go_id", how = "inner").merge(
+        go_metadata_df, on = "go_id", how = "inner")
 
 # GO P/A for GMS cluster proteins only
 go_cols = [c for c in go_presence_df.columns if c.startswith("GO:")]
-go_pa = gms_cluster_proteins_df
-  .merge(go_presence_df, on = "uniprot", how = "inner")[go_cols]
+go_pa = gms_cluster_proteins_df.merge(
+    go_presence_df, on = "uniprot", how = "inner")[go_cols]
 
 # Compute GO ID frequencies (percentage of proteins with GO ID) in cluster
 go_freq_df = go_pa.mean().mul(100).reset_index()
@@ -80,7 +80,7 @@ cluster_go_df = go_freq_df.merge(merged, on = "go_id", how = "inner")
 cluster_go_df = cluster_go_df[cluster_go_df["percentage"] >= 5]
 
 cluster_go_df.to_csv(
-  f"results/5_describe_gms_cluster_func/cluster_dfs/merged_{CLUSTER_ID}.csv"
+    f"results/5_describe_gms_cluster_func/cluster_dfs/merged_{CLUSTER_ID}.csv"
 )
 
 
