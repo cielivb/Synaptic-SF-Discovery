@@ -20,71 +20,68 @@ CLUSTER_ID = args.cluster_id
 
 ### Read in and wrangle initial/pre-join dataframes -----------------------
 
-# Read in cluster dataframe
+# Read in cluster dataframe and keep only GO IDs that have high odds ratio
+# (gms_cluster, go_id, prop_in_cluster, prop_in_bg, p_value,
+#  odds_ratio, p_adj, enriched, high_odds)
 cluster_df_path = Path(
-  f"results/6_make_visual_summaries/cluster_dfs/{CLUSTER_ID}.csv"
+  f"results/5_describe_gms_cluster_func/cluster_dfs/{CLUSTER_ID}.csv"
 )
 cluster_df = pd.read_csv(str(cluster_df_path))
+cluster_df = cluster_df[cluster_df["high_odds"]][["go_id", "odds_ratio"]]
 
-# Read in GO ID metadata dataframe (maps GO IDs to GO names/descriptions)
+# Read in GO ID metadata dataframe (go_id, lbl, namespace)
 go_metadata_path = Path(f"results/1_filter_proteins/go_metadata.csv")
 go_metadata_df = pd.read_csv(str(go_metadata_path))
+go_metadata_df = go_metadata_df.rename(columns = {"lbl": "label"})
 
-# Read in GO module members df (maps GO IDs to their GO modules/GO ID clusters)
+# Read in GO module members df (module, go_id)
 go_module_df_path = Path(
-  "results/3_extract_functional_features/go_module_members.csv"
+  "results/3_extract_go_module_scores/go_module_members.csv"
 )
 go_module_df = pd.read_csv(str(go_module_df_path))
 
 # Read in GO ID presence/absence per protein dataframe
+# (uniprot, taxon, GO:0005515, ..., GO:0071881, module_1, ..., module_10)
 go_presence_df_path = Path(
-  "results/3_extract_functional_features/functional_features.csv"
+  "results/3_extract_go_module_scores/go_module_scores.csv"
 )
 go_presence_df = pd.read_csv(str(go_presence_df_path))
 
-# Read in GO IDs in cluster with effect size (odds ratio) >= 2.5
-enriched_go_ids_path = Path(
-  "results/5_find_enriched_go_ids/go_enrichment_results.csv"
-)
-enriched_go_ids_df = pd.read_csv(str(enriched_go_ids_path))
-enriched_go_ids_df = enriched_go_ids_df[
-    (enriched_go_ids_df["gms_cluster"] == CLUSTER_ID) &
-    (enriched_go_ids_df["odds_ratio"] >= 2.5)
-][["go_id", "odds_ratio"]]
-
+# Read in GMS cluster assignment dataframe and keep only proteins in this cluster
+# (-,uniprot,--,gms_cluster,)
+gms_cluster_assign_path = Path("results/4_cluster_by_gms/clustered_by_gms.csv")
+gms_cluster_assign_df = pd.read_csv(str(gms_cluster_assign_path))
+gms_cluster_proteins_df = gms_cluster_assign_df[
+  gms_cluster_assign_df[gms_cluster] == CLUSTER_ID
+][["uniprot", "gms_cluster"]]
 
 
 
 ### Join dataframes -------------------------------------------------------
 
-# Get dataframe containing GO ID, label, namespace, and GO module for enriched
-# GO IDs only
-go_metadata_df = (
-    go_metadata_df.merge(enriched_go_ids_df, on = "go_id", how = "inner")
-    .merge(go_module_df, on = "go_id", how = "inner")
-    .rename(columns={"lbl": "label"})
-)
+# (go_id, module, label, namespace, odds_ratio)
+merged = cluster_df
+  .merge(go_module_df, on = "go_id", how = "inner")
+  .merge(go_metadata_df, on = "go_id", how = "inner")
 
-# Get dataframe containing only rows present in cluster dataframe, and only GO
-# ID columns where GO ID is present in at least one of these rows
-cluster_df = cluster_df.merge(go_presence_df, on = "uniprot", how = "inner")
-go_cols = [c for c in cluster_df.columns if c.startswith("GO:")]
-keep_cols = [c for c in go_cols if cluster_df[c].any()] # >=1 non-zero val
-cluster_go_df = cluster_df.drop(
-  columns=[c for c in cluster_df.columns if c not in keep_cols]
-)
-cluster_go_df = cluster_go_df.astype(int)
+# GO P/A for GMS cluster proteins only
+go_cols = [c for c in go_presence_df.columns if c.startswith("GO:")]
+go_pa = gms_cluster_proteins_df
+  .merge(go_presence_df, on = "uniprot", how = "inner")[go_cols]
 
 # Compute GO ID frequencies (percentage of proteins with GO ID) in cluster
-go_freq_df = cluster_go_df.mean().mul(100).reset_index()
+go_freq_df = go_pa.mean().mul(100).reset_index()
 go_freq_df.columns = ["go_id", "percentage"]
 
-# Keep only those GO IDs present in at least 5% of cluster proteins
-go_freq_df = go_freq_df[go_freq_df["percentage"] >= 5]
+# Merge GO ID percentage dataframe with merged GO metadata dataframe
+cluster_go_df = go_freq_df.merge(merged, on = "go_id", how = "inner")
 
-# Merge GO ID percentage dataframe with GO metadata dataframe
-cluster_go_df = go_freq_df.merge(go_metadata_df, on = "go_id", how = "inner")
-cluster_go_df.to_csv(f"results/6_make_visual_summaries/cluster_dfs/merged{CLUSTER_ID}.csv")
+# Keep only those GO IDs present in at least 5% of cluster proteins
+cluster_go_df = cluster_go_df[cluster_go_df["percentage"] >= 5]
+
+cluster_go_df.to_csv(
+  f"results/5_describe_gms_cluster_func/cluster_dfs/merged_{CLUSTER_ID}.csv"
+)
 
 
 
