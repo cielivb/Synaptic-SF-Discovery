@@ -5,7 +5,6 @@ outdir <- "results/6_make_visual_summaries"
 log_file <- "logs/6_make_visual_summaries.log"
 source("scripts/setup.R")
 configure_logger(log_file)
-dir.create(glue("{outdir}/cluster_dfs"), showWarnings = FALSE)
 
 library(ggplot2)
 library(GGally)

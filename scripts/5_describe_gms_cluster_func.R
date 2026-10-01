@@ -6,6 +6,7 @@ outdir <- "results/5_describe_gms_cluster_func"
 log_file <- "logs/5_describe_gms_cluster_func.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+dir.create(glue("{outdir}/cluster_dfs"), showWarnings = FALSE)
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
 
@@ -89,5 +90,14 @@ write_csv(summary_df, glue("{outdir}/go_enrichment_per_cluster.csv"))
 
 ### Create GO Graph Visual Summary per GMS Cluster ------------------------
 
+log_info("Creating GO summary graphs ...")
 
+gms_clusters <- unique(sort(results_df$gms_cluster))
+done <- future_lapply(gms_clusters, function (gms_cluster_id, outdir) {
+  cluster_df <- results_df |> filter(gms_cluster == gms_cluster_id)
+  write_csv(cluster_df, glue("{outdir}/cluster_dfs/{gms_cluster_id}.csv"))
+  system(glue("python scripts/make_go_graph_plot.py {gms_cluster_id}"))
+}, outdir = outdir)
+
+log_info("Done!")
 
