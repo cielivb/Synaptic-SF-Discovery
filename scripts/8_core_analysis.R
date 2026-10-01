@@ -1,7 +1,10 @@
-# The core analysis is applied both across and within taxa, and consists of two 
+# The core analysis is applied both across taxa only, and consists of two 
 # distinct stages:
 # 1. Pairwise PERMANOVA between GMS clusters on protein shapes (centroid diffs)
 # 2. Pairwise betadisper between GMS clusters on protein shapes (dispersion diffs)
+
+# Within taxa is not planned as many clusters will be of an inadequate sample
+# size within taxa.
 
 # Want to know if the geometric shapes of proteins in cluster
 # A are statistically different from those in cluster B -> use raw/absolute 
@@ -15,9 +18,7 @@
 # which should be coloured with a red hue. Intensity of hue should match
 # significance. Ideally, tiles matching the same cluster should be greyed out.
 
-# The above tile plot should also be generated for within taxa analyses, and
-# tiles that match GMS clusters that are not present in the taxa should be
-# greyed out.
+
 
 
 outdir <- "results/8_core_analysis"
@@ -110,6 +111,23 @@ pw_betadisper <- function(df_1, df_2, id_1, id_2) {
 }
 
 
+# Take a results dataframe containing some NA results and adjust for multiple
+# testing via Benjamini Hochberg, omitting all "results" with NA values from
+# the BH total. NA values represent analyses not run either because the pair
+# contained the same cluster (clustX vs clustX), or sample size was insufficient
+# in at least one cluster
+adjust_pvalues <- function(results_df) {
+  
+  # Separate NA and non-NA results and add p_adj column
+  na_results <- results_df |> filter(is.na(p)) |> mutate(p_adj = NA)
+  non_na_results <- results_df |> filter(!is.na(p)) |> 
+    mutate(p_adj = p.adjust(p, method = "BH"))
+  
+  # Reattach NA results and return
+  adjusted_df <- bind_rows(na_results, non_na_results)
+  return(adjusted_df)
+}
+
 
 
 
@@ -165,4 +183,26 @@ betadisper_results <- bind_rows(lapply(clusters, function (clust1) {
   }, clust1=clust1, df=df, min_size)
   return(bind_rows(results))
 }))
+
+
+# Adjust pairwise PERMANOVA and betadisper results for multiple testing,
+# then write to file
+permanova_results <- adjust_pvalues(permanova_results)
+betadisper_results <- adjust_pvalues(betadisper_results)
+write_csv(permanova_results, glue("{outdir}/permanova_results.csv"))
+write_csv(betadisper_results, glue("{outdir}/betadisper_results.csv"))
+
+
+
+
+### Create tile plot (core result!!!) -------------------------------------
+
+
+
+
+
+
+
+
+
 
