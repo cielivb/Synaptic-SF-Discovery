@@ -24,6 +24,7 @@ source("scripts/setup.R")
 configure_logger(log_file)
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
+library(ggplot2)
 library(energy)
 
 set.seed(254)
@@ -72,7 +73,7 @@ pairwise_energy <- function(clust1, clust2, df1, df2, feature_cols) {
   set.seed(254)
   X <- as.matrix(df1[, feature_cols])
   Y <- as.matrix(df2[, feature_cols])
-  result <- eqdist.etest(rbind(X, Y), sizes = c(nrow(X), nrow(Y)), R = 9)
+  result <- eqdist.etest(rbind(X, Y), sizes = c(nrow(X), nrow(Y)), R = 199)
   return(tibble(
     clust1 = clust1,
     clust2 = clust2,
@@ -104,18 +105,19 @@ adjust_pvalues <- function(results_df) {
 
 ### Run analysis ----------------------------------------------------------
 
+log_info("Running pairwise energy tests ...")
+
 clusters <- unique(sort(df$gms_cluster))
 min_size <- 10 # Require at least 10 proteins in a cluster to do a comparison
 feature_cols <- c("mean_pLDDT", "log_length", "log_kurtosis", "coeff_var", "eccentricity")
 
 # Get unadjusted pairwise energy test results
-log_info("Running pairwise energy tests ...")
 energy_results <- bind_rows(lapply(clusters, function (clust1) {
   results <- future_lapply(
     clusters,
     function (clust2, clust1, df, min_size, feature_cols) {
       
-      if (clust2 <= clust1)
+      if (clust1 <= clust2)
         return(get_na_energy_result(clust1, clust2))
       
       df1 <- df |> filter(gms_cluster == clust1)
@@ -139,17 +141,35 @@ log_info("Adjusting for multiple testing ...")
 energy_results <- adjust_pvalues(energy_results)
 write_csv(energy_results, glue("{outdir}/energy_results.csv"))
 
+# Log number of significant results and write summary
+num_sig <- nrow(energy_results |> filter(p_adj < 0.05))
+log_info(glue("{num_sig} significant results found"))
+p_adj <- energy_results$p_adj
+write_csv(
+  tibble(
+    mean = mean(p_adj), sd = sd(p_adj), min = min(p_adj),
+    q1 = quantile(p_adj, 0.25), median = median(p_adj),
+    q3 = quantile(p_adj, 0.75), max = max(p_adj)
+  ),
+  glue("{outdir}/p_adj_summary_stats.csv")
+)
 
 
 
 ### Create tile plot (core result!!!) -------------------------------------
 
+log_info("Creating tile plot ...")
+
 # Drop all rows where clust2 <= clust1 - not required for triangle tile plot
-energy_results <- energy_results |> filter(clust2 > clust1)
+energy_results <- energy_results |> filter(clust1 > clust2)
 
 # Add tile aesthetics settings
 energy_results <- energy_results |>
-  mutate(is_sig = (p_adj < 0.05)) |>
+  mutate(
+    is_sig = (p_adj < 0.05),
+    clust1 = factor(clust1),
+    clust2 = factor(clust2)
+  ) |>
   mutate(alpha = ifelse(is_sig, 1 - p_adj, 0)) |> # make non-sig invisible, and sig visible
   mutate(
     alpha = ifelse(is.na(p_adj), 1, alpha), # make grey/NA visible
@@ -172,19 +192,27 @@ plt <- ggplot(energy_results, aes(x = clust1, y = clust2)) +
     data = subset(energy_results, is.na(p_adj)), 
     fill = "grey80", color = "grey80"
   ) +
+  scale_x_discrete(limits = rev) +
   coord_fixed() +
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid = element_blank()
-  ) +
   labs(
     x = "Cluster",
     y = "Cluster",
-    title = "Pairwise Energy Test Significance Matrix"
+    title = "Pairwise Energy Test Significance Matrix",
+    subtitle = "All Shape Features"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank()
   )
 svg(glue("{outdir}/core_result.svg"), height = 12, width = 12)
 print(plt)
 invisible(dev.off())
+
+
+
+log_info("Done!")
 
 
