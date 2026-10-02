@@ -7,8 +7,8 @@
 # Taxon-Specific Datasets.
 
 
-outdir <- "results/1_filter_proteins"
-log_file <- "logs/1_filter_proteins.log"
+outdir <- "results/01_filter_proteins"
+log_file <- "logs/01_filter_proteins.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 

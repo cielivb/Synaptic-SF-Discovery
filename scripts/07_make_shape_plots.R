@@ -3,8 +3,8 @@
 # in that GMS cluster. 
 # Additionally, create a grid plot containing the above plots for ease of comparison.
 
-outdir <- "results/7_make_shape_plots"
-log_file <- "logs/7_make_shape_plots.log"
+outdir <- "results/07_make_shape_plots"
+log_file <- "logs/07_make_shape_plots.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
@@ -132,7 +132,7 @@ STYLES = list(
 log_info("Creating shape plots per GMS cluster ...")
 
 df <- read_csv(
-  "results/4_cluster_by_gms/clustered_by_gms.csv",
+  "results/04_cluster_by_gms/clustered_by_gms.csv",
   show_col_types = FALSE
 ) |> mutate(taxon = stringr::str_to_title(taxon))
 gms_clusters <- unique(sort(df$gms_cluster))

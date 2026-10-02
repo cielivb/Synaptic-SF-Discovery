@@ -2,8 +2,8 @@
 # taxa, then run HDBSCAN on the manifold with the most structure.
 
 
-outdir <- "results/4_cluster_by_gms"
-log_file <- "logs/4_cluster_by_gms.log"
+outdir <- "results/04_cluster_by_gms"
+log_file <- "logs/04_cluster_by_gms.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 
@@ -24,11 +24,11 @@ feature_spaces <- c("Shape", "GO Module Scores", "Shape\n+\nGO Module Scores")
 log_info("Loading data ...")
 
 shape_df <- read_csv(
-  "results/2_extract_shape_features/shape_features.csv",
+  "results/02_extract_shape_features/shape_features.csv",
   col_names = TRUE, show_col_types = FALSE
 )
 go_module_df <- read_csv(
-  "results/3_extract_go_module_scores/go_module_scores.csv",
+  "results/03_extract_go_module_scores/go_module_scores.csv",
   col_names = TRUE, show_col_types = FALSE) |>
   select(taxon, uniprot, starts_with("module_")
 )

@@ -1,7 +1,7 @@
 # Extract core synaptic protein shape features.
 
-outdir <- "results/2_extract_shape_features"
-log_file = "logs/2_extract_shape_data.log"
+outdir <- "results/02_extract_shape_features"
+log_file = "logs/02_extract_shape_data.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 
@@ -35,7 +35,7 @@ extract_atom_site_data <- function(taxon, afdb_taxon_tar, atom_site_csv_dir, out
   
   # Make tibble containing path and uniprot for each synaptic protein in taxon
   synaptic_uniprot <- read_csv(
-    glue("results/1_filter_proteins/{taxon}_uniprot_only.csv"), 
+    glue("results/01_filter_proteins/{taxon}_uniprot_only.csv"), 
     show_col_types = FALSE
   )
   pdb_tibble <- tibble(path = list.files(

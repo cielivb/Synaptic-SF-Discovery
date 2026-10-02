@@ -24,32 +24,32 @@ CLUSTER_ID = args.cluster_id
 # (gms_cluster, go_id, prop_in_cluster, prop_in_bg, p_value,
 #  odds_ratio, p_adj, enriched, high_odds)
 cluster_df_path = Path(
-    f"results/5_describe_gms_cluster_func/cluster_dfs/{CLUSTER_ID}.csv"
+    f"results/05_describe_gms_cluster_func/cluster_dfs/{CLUSTER_ID}.csv"
 )
 cluster_df = pd.read_csv(str(cluster_df_path))
 cluster_df = cluster_df[cluster_df["high_odds"]][["go_id", "odds_ratio"]]
 
 # Read in GO ID metadata dataframe (go_id, lbl, namespace)
-go_metadata_path = Path(f"results/1_filter_proteins/go_metadata.csv")
+go_metadata_path = Path(f"results/01_filter_proteins/go_metadata.csv")
 go_metadata_df = pd.read_csv(str(go_metadata_path))
 go_metadata_df = go_metadata_df.rename(columns = {"lbl": "label"})
 
 # Read in GO module members df (module, go_id)
 go_module_df_path = Path(
-    "results/3_extract_go_module_scores/go_module_members.csv"
+    "results/03_extract_go_module_scores/go_module_members.csv"
 )
 go_module_df = pd.read_csv(str(go_module_df_path))
 
 # Read in GO ID presence/absence per protein dataframe
 # (uniprot, taxon, GO:0005515, ..., GO:0071881, module_1, ..., module_10)
 go_presence_df_path = Path(
-    "results/3_extract_go_module_scores/go_module_scores.csv"
+    "results/03_extract_go_module_scores/go_module_scores.csv"
 )
 go_presence_df = pd.read_csv(str(go_presence_df_path))
 
 # Read in GMS cluster assignment dataframe and keep only proteins in this cluster
 # (-,uniprot,--,gms_cluster,)
-gms_cluster_assign_path = Path("results/4_cluster_by_gms/clustered_by_gms.csv")
+gms_cluster_assign_path = Path("results/04_cluster_by_gms/clustered_by_gms.csv")
 gms_cluster_assign_df = pd.read_csv(str(gms_cluster_assign_path))
 gms_cluster_proteins_df = gms_cluster_assign_df[
     gms_cluster_assign_df["gms_cluster"] == CLUSTER_ID
@@ -80,7 +80,7 @@ cluster_go_df = go_freq_df.merge(merged, on = "go_id", how = "inner")
 cluster_go_df = cluster_go_df[cluster_go_df["percentage"] >= 5]
 
 cluster_go_df.to_csv(
-    f"results/5_describe_gms_cluster_func/cluster_dfs/merged_{CLUSTER_ID}.csv"
+    f"results/05_describe_gms_cluster_func/cluster_dfs/merged_{CLUSTER_ID}.csv"
 )
 
 
@@ -88,7 +88,7 @@ cluster_go_df.to_csv(
 ### Create ancestor -> descendant DAG -------------------------------------
 
 # Read in JSON mapping GO IDs to lists of ancestors
-json_path = Path("results/1_filter_proteins/synaptic_go_ancestors.json")
+json_path = Path("results/01_filter_proteins/synaptic_go_ancestors.json")
 with open(json_path) as file:
     ancestor_map = json.load(file)
 
@@ -139,7 +139,7 @@ A.graph_attr.update({
 
 
 go_module_cmap_path = Path(
-  "results/3_extract_go_module_scores/go_module_cmap.csv"
+  "results/03_extract_go_module_scores/go_module_cmap.csv"
 )
 go_module_cmap_df = pd.read_csv(str(go_module_cmap_path))
 go_module_cmap_df["module"] = (
@@ -178,7 +178,7 @@ for meta_node in G.nodes:
 
 # Render plot
 A.layout("twopi")
-A.draw(f"results/5_describe_gms_cluster_func/gms_{CLUSTER_ID}_go_dag.svg")
+A.draw(f"results/05_describe_gms_cluster_func/gms_{CLUSTER_ID}_go_dag.svg")
 
 
 

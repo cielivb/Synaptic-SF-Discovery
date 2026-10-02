@@ -30,11 +30,11 @@ dir.create("logs", showWarnings = FALSE)
 dir.create("data", showWarnings = FALSE)
 dir.create("results", showWarnings = FALSE)
 result_dirs <- list(
-  "1_filter_proteins", "2_extract_shape_features", 
-  "3_extract_go_module_scores", "4_cluster_by_gms",
-  "5_describe_gms_cluster_func", "6_make_taxa_plots",
-  "7_make_shape_plots", "8_core_analysis",
-  "9_make_gms_cluster_summaries"
+  "01_filter_proteins", "02_extract_shape_features", 
+  "03_extract_go_module_scores", "04_cluster_by_gms",
+  "05_describe_gms_cluster_func", "06_make_taxa_plots",
+  "07_make_shape_plots", "08_core_analysis",
+  "09_make_gms_cluster_summaries", "10_make_misc"
 )
 lapply(result_dirs, function (d) {
   dir.create(glue("results/{d}"), showWarnings = FALSE)

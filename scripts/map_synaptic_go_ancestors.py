@@ -12,7 +12,7 @@ def extract_go(uri):
 
 
 # Load synaptic GO IDs
-synaptic_go_path = Path("results/1_filter_proteins/goslim_synapse_go_ids.csv")
+synaptic_go_path = Path("results/01_filter_proteins/goslim_synapse_go_ids.csv")
 synaptic_go_ids = pd.read_csv(str(synaptic_go_path))["go_id"].tolist()
 
 # Load GO-basic JSON into directed graph
@@ -37,7 +37,7 @@ for go_id in synaptic_go_ids:
         ancestor_map[go_id] = []
 
 # Write JSON mapping
-outpath = Path("results/1_filter_proteins/synaptic_go_ancestors.json")
+outpath = Path("results/01_filter_proteins/synaptic_go_ancestors.json")
 with open(outpath, "w") as outfile:
     json.dump(ancestor_map, outfile, indent=2)
 
@@ -63,4 +63,4 @@ for go_id in target_go_ids:
         if not namespace_found: row.update({"namespace": None})
         rows.append(row)
 metadata_df = pd.DataFrame(rows)
-metadata_df.to_csv("results/1_filter_proteins/go_metadata.csv", index=False)
+metadata_df.to_csv("results/01_filter_proteins/go_metadata.csv", index=False)

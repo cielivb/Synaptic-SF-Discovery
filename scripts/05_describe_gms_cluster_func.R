@@ -2,8 +2,8 @@
 # that appear to characterise each cluster and illustrate relationships between 
 # GO IDs for ease of functional interpretation
 
-outdir <- "results/5_describe_gms_cluster_func"
-log_file <- "logs/5_describe_gms_cluster_func.log"
+outdir <- "results/05_describe_gms_cluster_func"
+log_file <- "logs/05_describe_gms_cluster_func.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 dir.create(glue("{outdir}/cluster_dfs"), showWarnings = FALSE)
@@ -19,11 +19,11 @@ log_info("Running GO ID enrichment tests ...")
 
 # Read in and merge dataframes
 cluster_df <- read_csv(
-  "results/4_cluster_by_gms/clustered_by_gms.csv",
+  "results/04_cluster_by_gms/clustered_by_gms.csv",
   show_col_types = FALSE
 )
 go_presence_df <- read_csv(
-  "results/3_extract_go_module_scores/go_module_scores.csv",
+  "results/03_extract_go_module_scores/go_module_scores.csv",
   show_col_types = FALSE
 )
 df <- inner_join(cluster_df, go_presence_df, by = c("uniprot", "taxon")) |>

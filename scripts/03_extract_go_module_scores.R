@@ -5,8 +5,8 @@
 # containing taxon, uniprot, and module scores representing proportion of module
 # GO IDs associated with that protein.
 
-outdir <- "results/3_extract_go_module_scores"
-log_file <- "logs/3_extract_go_module_scores.log"
+outdir <- "results/03_extract_go_module_scores"
+log_file <- "logs/03_extract_go_module_scores.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 
@@ -63,7 +63,7 @@ log_info("Loading data ...")
 
 # Read in taxon GO annotation data (uniprot, go_id)
 ann_df <- bind_rows(lapply(taxa, function(taxon) {
-  func_file <- glue("results/1_filter_proteins/{taxon}.csv")
+  func_file <- glue("results/01_filter_proteins/{taxon}.csv")
   taxon_df <- read_csv(func_file, show_col_types = FALSE) |>
     mutate(taxon = !!taxon)
   return(taxon_df)

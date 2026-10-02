@@ -18,8 +18,8 @@
 
 
 
-outdir <- "results/8_core_analysis"
-log_file <- "logs/8_core_analysis.log"
+outdir <- "results/08_core_analysis"
+log_file <- "logs/08_core_analysis.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
@@ -41,13 +41,13 @@ set.seed(254)
 
 # Read in protein GMS cluster assignments and taxa
 cluster_df <- read_csv(
-  "results/4_cluster_by_gms/clustered_by_gms.csv",
+  "results/04_cluster_by_gms/clustered_by_gms.csv",
   show_col_types = FALSE
 ) |> select(taxon, uniprot, gms_cluster)
 
 # Read in geometric features (non-normalised)
 geom_df <- read_csv(
-  "results/2_extract_shape_features/shape_features.csv",
+  "results/02_extract_shape_features/shape_features.csv",
   show_col_types = FALSE
 ) |> rename(
   length = length_u, kurtosis = kurtosis_u, 
