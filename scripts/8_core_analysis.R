@@ -144,12 +144,47 @@ write_csv(energy_results, glue("{outdir}/energy_results.csv"))
 
 ### Create tile plot (core result!!!) -------------------------------------
 
+# Drop all rows where clust2 <= clust1 - not required for triangle tile plot
+energy_results <- energy_results |> filter(clust2 > clust1)
 
+# Add tile aesthetics settings
+energy_results <- energy_results |>
+  mutate(is_sig = (p_adj < 0.05)) |>
+  mutate(alpha = ifelse(is_sig, 1 - p_adj, 0)) |> # make non-sig invisible, and sig visible
+  mutate(
+    alpha = ifelse(is.na(p_adj), 1, alpha), # make grey/NA visible
+    label = ifelse(is_sig, sprintf("%.3f", p_adj), "")
+  )
 
-
-
-log_info("Done!")
-
-
+# Create triangular tile plot
+plt <- ggplot(energy_results, aes(x = clust1, y = clust2)) +
+  geom_tile(aes(fill = is_sig, alpha = alpha), color = "grey80") +
+  geom_text(aes(label = label), size = 3, color = "black") +
+  scale_fill_manual(
+    values = c(
+      "TRUE"  = "#2ECC71", # significant -> green
+      "FALSE" = "white" # non‑significant -> white
+    ),
+    guide = "none"
+  ) +
+  scale_alpha(range = c(0.2, 1), guide = "none") +
+  geom_tile( # NA tiles need to be grey — override using a second layer
+    data = subset(energy_results, is.na(p_adj)), 
+    fill = "grey80", color = "grey80"
+  ) +
+  coord_fixed() +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank()
+  ) +
+  labs(
+    x = "Cluster",
+    y = "Cluster",
+    title = "Pairwise Energy Test Significance Matrix"
+  )
+svg(glue("{outdir}/core_result.svg"), height = 12, width = 12)
+print(plt)
+invisible(dev.off())
 
 
