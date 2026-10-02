@@ -300,9 +300,11 @@ make_tile_plot <- function (df, subtitle) {
     ) +
     theme_minimal(base_size = 14) +
     theme(
-      plot.title = element_text(size = 18, hjust = 0.5),
-      plot.subtitle = element_text(size = 12, hjust = 0.5),
+      plot.title = element_text(size = 24, hjust = 0.5),
+      plot.subtitle = element_text(size = 18, hjust = 0.5),
       axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.title.x = element_text(size = 18, margin = margin(t=30)),
+      axis.title.y = element_text(size = 18, margin = margin(r=30)),
       panel.grid = element_blank()
     )
   png(
@@ -318,21 +320,41 @@ make_tile_plot(all_energy_results, "All Shape Features")
 make_tile_plot(core_energy_results, "Core Shape Features")
 make_tile_plot(irreg_energy_results, "Shape Irregularity Features")
 
-# Stitch tile plots together
-plts <- c(
-  glue("{outdir}/{clean_string('All Shape Features')}.png"),
-  glue("{outdir}/{clean_string('Core Shape Features')}.png"),
-  glue("{outdir}/{clean_string('Shape Irregularity Features')}.png")
+
+# Read PNGs
+img_all  <- rasterGrob(
+  readPNG("{outdir}/{clean_string('All Shape Features')}.png"), 
+  interpolate = TRUE
 )
-imgs <- lapply(plts, function (path) {
-  rasterGrob(readPNG(path), interpolate = TRUE)
-})
-grid_plt <- grid.arrange(grobs = imgs, ncol = 3)
+img_core <- rasterGrob(
+  readPNG("{outdir}/{clean_string('Core Shape Features')}.png"),
+  interpolate = TRUE
+)
+img_irreg<- rasterGrob(
+  readPNG("{outdir}/{clean_string('Shape Irregularity Features')}.png"),
+  interpolate = TRUE
+)
+
+# Plot 1: all three plots in one row
+grid_plt_1 <- grid.arrange(grobs = c(img_all, img_core, img_irreg), ncol = 3)
 png(
-  glue("{outdir}/result_grid.png"),
+  glue("{outdir}/result_grid_1.png"),
   width = 36, height = 12, units = "in", res = 300
 )
 grid.draw(grid_plt)
+invisible(dev.off())
+
+# Plot 2: arrange PNGs such that "All" plot is above the other two plots
+grid_plt_2 <- grid.arrange(
+  img_all, 
+  arrangeGrob(img_core, img_irreg, ncol = 2),
+  nrow = 2, heights = c(2, 1) # top row twice as tall as bottom row
+)
+png(
+  glue("{outdir}/result_grid_2.png"),
+  width = 20, height = 20, units = "in", res = 300
+)
+grid.draw(grid_plt_2)
 invisible(dev.off())
 
 
