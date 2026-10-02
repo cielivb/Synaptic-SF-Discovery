@@ -28,7 +28,9 @@ library(png)
 library(grid)
 library(gridExtra)
 library(ggplot2)
-library(energy)
+library(gghalves)
+library(energy) # statistical testing
+library(tidyr)
 
 set.seed(254)
 
@@ -92,7 +94,7 @@ pairwise_energy <- function(clust1, clust2, df1, df2, feature_cols) {
 # contained the same cluster (clustX vs clustX), or sample size was insufficient
 # in at least one cluster
 adjust_pvalues <- function(results_df) {
-  
+
   # Separate NA and non-NA results and add p_adj column
   na_results <- results_df |> filter(is.na(p)) |> mutate(p_adj = NA)
   non_na_results <- results_df |> filter(!is.na(p)) |> 
@@ -137,12 +139,12 @@ energy_results <- bind_rows(lapply(clusters, function (clust1) {
       
       # Get energy results for each shape feature set
       all_result <- pairwise_energy(clust1, clust2, df1, df2, all_features) |>
-        mutate(features = "all")
+        mutate(features = "All Shape\nFeatures")
       core_result <- pairwise_energy(clust1, clust2, df1, df2, core_features) |>
-        mutate(features = "core")
+        mutate(features = "Core Shape\nFeatures")
       irreg_result <- pairwise_energy(
         clust1, clust2, df1, df2, irregularity_features) |>
-        mutate(features = "irreg")
+        mutate(features = "Shape Irregularity\nFeatures")
       
       # Combine results and return
       return(bind_rows(all_result, core_result, irreg_result))
@@ -159,11 +161,14 @@ energy_results <- bind_rows(lapply(clusters, function (clust1) {
 # independent adjustment.
 log_info("Adjusting for multiple testing ...")
 all_energy_results <- adjust_pvalues(
-  energy_results |> filter(features == "All Shape\nFeatures"))
+  energy_results |> 
+    filter(features == "All Shape\nFeatures" | is.na(features)))
 core_energy_results <- adjust_pvalues(
-  energy_results |> filter(features == "Core Shape\nFeatures"))
+  energy_results |> 
+    filter(features == "Core Shape\nFeatures" | is.na(features)))
 irreg_energy_results <- adjust_pvalues(
-  energy_results |> filter(features == "Shape Irregularity\nFeatures"))
+  energy_results |> 
+    filter(features == "Shape Irregularity\nFeatures" | is.na(features)))
 write_csv(all_energy_results, glue("{outdir}/energy_results_all_features.csv"))
 write_csv(core_energy_results, glue("{outdir}/energy_results_core_features.csv"))
 write_csv(irreg_energy_results, glue("{outdir}/energy_results_irreg_features.csv"))
@@ -179,7 +184,7 @@ log_info("Inspecting p-value distributions ...")
 log_sig_result_summary <- function (df, name) {
   num_sig <- nrow(df |> filter(p_adj < 0.05))
   log_info(glue("{name}: {num_sig} significant results found"))
-  p_adj <- df$p_adj
+  p_adj <- df$p_adj[!is.na(df$p_adj)]
   write_csv(
     tibble(
       mean = mean(p_adj), sd = sd(p_adj), min = min(p_adj),
@@ -193,10 +198,11 @@ log_sig_result_summary(all_energy_results, "All Shape Features")
 log_sig_result_summary(core_energy_results, "Core Shape Features")
 log_sig_result_summary(irreg_energy_results, "Shape Irregularity Features")
 
-# Draw horizontal violin plots illustrating p-value distribution
+# Draw horizontal violin plots illustrating adjusted & unadjusted p-value 
+# distribution
 feature_p_vals <- bind_rows(
   all_energy_results, core_energy_results, irreg_energy_results
-  ) |> select(features, p_adj) |>
+  ) |> select(features, p, p_adj)
 feature_p_vals$features <- factor(
   feature_p_vals$features,
   levels = c(
@@ -205,18 +211,26 @@ feature_p_vals$features <- factor(
     "Shape Irregularity\nFeatures"
   )
 )
-plt <- ggplot(feature_p_vals, aes(x = feature, y = p_adj)) +
-  geom_violin(trim = FALSE) +
-  geom_jitter( # add visible points
-    width = 0.15, height = 0, # no jitter on p-val points, just side-to-side
-    size = 1.5, alpha = 0.6, color = "black"
+feature_p_vals <- feature_p_vals |> # Get df of features, type, p_value
+  pivot_longer(cols = c(p, p_adj), names_to = "type", values_to = "p_value") |>
+  mutate(type = ifelse(type == "p", "Raw", "Adjusted"))
+plt <- ggplot(feature_p_vals, aes(x = features, y = p_value, fill = type)) +
+  geom_half_violin( # raw
+    data = feature_p_vals |> filter(type == "Raw"),
+    side = "l", trim = TRUE, alpha = 0.7
+  ) + 
+  geom_half_violin( # adjusted
+    data = feature_p_vals |> filter(type == "Adjusted"),
+    side = "r", trim = TRUE, alpha = 0.7
   ) +
+  geom_jitter(aes(color = type), width = 0.15, height = 0, size = 1.2, alpha = 0.6) +
   geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
-  labs(title = "Pairwise Energy Test P-Value Distributions") +
   coord_flip() +
   theme_classic() +
-  theme(
-    plot.title = element_text(size = 16, hjust = 0.5),
+  labs(
+    title = "Raw vs Adjusted P-Value Distributions",
+    fill = "",
+    color = ""
   )
 svg(glue("{outdir}/p_distr.svg"), height = 12, width = 8)
 print(plt)
@@ -306,9 +320,9 @@ make_tile_plot(irreg_energy_results, "Shape Irregularity Features")
 
 # Stitch tile plots together
 plts <- c(
-  glue("{outdir}/{clean_string('All Shape Features'}.png"),
-  glue("{outdir}/{clean_string('Core Shape Features'}.png"),
-  glue("{outdir}/{clean_string('Shape Irregularity Features'}.png"),
+  glue("{outdir}/{clean_string('All Shape Features')}.png"),
+  glue("{outdir}/{clean_string('Core Shape Features')}.png"),
+  glue("{outdir}/{clean_string('Shape Irregularity Features')}.png")
 )
 imgs <- lapply(plts, function (path) {
   rasterGrob(readPNG(path), interpolate = TRUE)
