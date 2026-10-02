@@ -213,7 +213,7 @@ feature_p_vals$features <- factor(
 )
 feature_p_vals <- feature_p_vals |> # Get df of features, type, p_value
   pivot_longer(cols = c(p, p_adj), names_to = "type", values_to = "p_value") |>
-  mutate(type = ifelse(type == "p", "Raw", "Adjusted"))
+  mutate(type = ifelse(type == "p", "Raw", "Adjusted")) |> drop_na()
 plt <- ggplot(feature_p_vals, aes(x = features, y = p_value, fill = type)) +
   geom_half_violin( # raw
     data = feature_p_vals |> filter(type == "Raw"),
@@ -223,14 +223,19 @@ plt <- ggplot(feature_p_vals, aes(x = features, y = p_value, fill = type)) +
     data = feature_p_vals |> filter(type == "Adjusted"),
     side = "r", trim = TRUE, alpha = 0.7
   ) +
-  geom_jitter(aes(color = type), width = 0.15, height = 0, size = 1.2, alpha = 0.6) +
+  geom_jitter(aes(color = type), width = 0.25, height = 0, size = 1.2, alpha = 0.6) +
   geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
   coord_flip() +
-  theme_classic() +
   labs(
     title = "Raw vs Adjusted P-Value Distributions",
-    fill = "",
-    color = ""
+    y = "", fill = "", color = ""
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5),
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.box = "horizontal"
   )
 svg(glue("{outdir}/p_distr.svg"), height = 12, width = 8)
 print(plt)
@@ -323,25 +328,25 @@ make_tile_plot(irreg_energy_results, "Shape Irregularity Features")
 
 # Read PNGs
 img_all  <- rasterGrob(
-  readPNG("{outdir}/{clean_string('All Shape Features')}.png"), 
+  readPNG(glue("{outdir}/{clean_string('All Shape Features')}.png")), 
   interpolate = TRUE
 )
 img_core <- rasterGrob(
-  readPNG("{outdir}/{clean_string('Core Shape Features')}.png"),
+  readPNG(glue("{outdir}/{clean_string('Core Shape Features')}.png")),
   interpolate = TRUE
 )
 img_irreg<- rasterGrob(
-  readPNG("{outdir}/{clean_string('Shape Irregularity Features')}.png"),
+  readPNG(glue("{outdir}/{clean_string('Shape Irregularity Features')}.png")),
   interpolate = TRUE
 )
 
 # Plot 1: all three plots in one row
-grid_plt_1 <- grid.arrange(grobs = c(img_all, img_core, img_irreg), ncol = 3)
+grid_plt_1 <- grid.arrange(grobs = list(img_all, img_core, img_irreg), ncol = 3)
 png(
   glue("{outdir}/result_grid_1.png"),
   width = 36, height = 12, units = "in", res = 300
 )
-grid.draw(grid_plt)
+grid.draw(grid_plt_1)
 invisible(dev.off())
 
 # Plot 2: arrange PNGs such that "All" plot is above the other two plots
