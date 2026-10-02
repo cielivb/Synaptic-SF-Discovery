@@ -287,6 +287,14 @@ invisible(dev.off())
 # Write clusters to file
 write_csv(df_to_cluster, glue("{outdir}/clustered_by_gms.csv"), col_names = TRUE)
 
+# Write number of proteins per GMS cluster
+cluster_counts <- df |>
+  count(gms_cluster, name = "n_proteins")
+cluster_taxon_counts <- df |>
+  count(gms_cluster, taxon, name = "n_proteins")
+write_csv(cluster_counts, glue("{outdir}/cluster_counts.csv"))
+write_csv(cluster_taxon_counts, glue("{outdir}/cluster_taxon_counts.csv"))
+
 
 # Create GO Module Score cluster membership colourmap
 gms_clusters <- levels(factor(sort(df$gms_cluster)))
@@ -348,7 +356,6 @@ svg(glue(
 )
 print(go_cluster_coloured_manifolds_plt)
 invisible(dev.off())
-
 
 
 

@@ -212,9 +212,9 @@ feature_p_vals$features <- factor(
   )
 )
 feature_p_vals <- feature_p_vals |> # Get df of features, type, p_value
-  pivot_longer(cols = c(p, p_adj), names_to = "type", values_to = "p_value") |>
+  pivot_longer(cols = c(p, p_adj), names_to = "type", values_to = "p-value") |>
   mutate(type = ifelse(type == "p", "Raw", "Adjusted")) |> drop_na()
-plt <- ggplot(feature_p_vals, aes(x = features, y = p_value, fill = type)) +
+plt <- ggplot(feature_p_vals, aes(x = features, y = "p-value", fill = type)) +
   geom_half_violin( # raw
     data = feature_p_vals |> filter(type == "Raw"),
     side = "l", trim = TRUE, alpha = 0.7
@@ -228,14 +228,17 @@ plt <- ggplot(feature_p_vals, aes(x = features, y = p_value, fill = type)) +
   coord_flip() +
   labs(
     title = "Raw vs Adjusted P-Value Distributions",
-    y = "", fill = "", color = ""
+    x = "", fill = "", color = ""
   ) +
   theme_classic() +
   theme(
-    plot.title = element_text(size = 20, hjust = 0.5),
+    plot.title = element_text(size = 20, hjust = 0.5, margin = margin(b = 30)),
+    axis.text.x = element_text(size = 12, margin = margin(t = 15, b = 15)),
+    axis.text.y = element_text(size = 12, margin = margin(t = 15, b = 15)),
     legend.position = "bottom",
     legend.direction = "horizontal",
-    legend.box = "horizontal"
+    legend.box = "horizontal",
+    legend.text = element_text(size = 14)
   )
 svg(glue("{outdir}/p_distr.svg"), height = 12, width = 8)
 print(plt)
@@ -343,20 +346,29 @@ img_irreg<- rasterGrob(
 # Plot 1: all three plots in one row
 grid_plt_1 <- grid.arrange(grobs = list(img_all, img_core, img_irreg), ncol = 3)
 png(
-  glue("{outdir}/result_grid_1.png"),
+  glue("{outdir}/result_grid_1_hor.png"),
   width = 36, height = 12, units = "in", res = 300
 )
 grid.draw(grid_plt_1)
 invisible(dev.off())
 
-# Plot 2: arrange PNGs such that "All" plot is above the other two plots
-grid_plt_2 <- grid.arrange(
+# Plot 2: all three plots in one column
+grid_plt_2 <- grid.arrange(grobs = list(img_all, img_core, img_irreg), ncol = 1)
+png(
+  glue("{outdir}/result_grid_2_vert.png"),
+  width = 12, height = 36, units = "in", res = 300
+)
+grid.draw(grid_plt_2)
+invisible(dev.off())
+
+# Plot 3: arrange PNGs such that "All" plot is above the other two plots
+grid_plt_3 <- grid.arrange(
   img_all, 
   arrangeGrob(img_core, img_irreg, ncol = 2),
   nrow = 2, heights = c(2, 1) # top row twice as tall as bottom row
 )
 png(
-  glue("{outdir}/result_grid_2.png"),
+  glue("{outdir}/result_grid_3.png"),
   width = 20, height = 20, units = "in", res = 300
 )
 grid.draw(grid_plt_2)
