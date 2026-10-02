@@ -10,3 +10,6 @@ dependencies:
   - networkx
   - graphviz
   - pygraphviz
+  - gsl # SysDep; GNU Scientific Library for energy tests
+  - libpng # SysDep; for PNG
+  - zlib # SysDep; for PNG

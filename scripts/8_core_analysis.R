@@ -1,22 +1,19 @@
-# The core analysis is applied both across taxa only, and consists of two 
-# distinct stages:
-# 1. Pairwise PERMANOVA between GMS clusters on protein shapes (centroid diffs)
-# 2. Pairwise betadisper between GMS clusters on protein shapes (dispersion diffs)
+# The core analysis is applied both across taxa only. Within taxa is not planned
+# as many clusters will be of an inadequate sample size within taxa.
 
-# Within taxa is not planned as many clusters will be of an inadequate sample
-# size within taxa.
-
-# Want to know if the geometric shapes of proteins in cluster
+# Want to know if the distributions of geometric shapes of proteins in cluster
 # A are statistically different from those in cluster B -> use raw/absolute 
 # geometric features (except length and kurtosis, which will be log transformed
 # due to high skew - still biologically meaningful)
 
+# Ho: The full multivariate distribution of protein shape features in cluster X
+# is identical to the full multivariate distribution (location, scale, shape, 
+# tails, modality) of proteins shape features in cluster Y.
+
 # A tile plot illustrating significance of difference between pairwise cluster 
-# comparisons is also planned. It will be an nxn tile plot where n is the number of 
-# GMS clusters. The lower triangle should contain betadisper results which should be
-# coloured with a blue hue. The upper triangle should contain PERMANOVA results
-# which should be coloured with a red hue. Intensity of hue should match
-# significance. Ideally, tiles matching the same cluster should be greyed out.
+# comparisons is also planned. It will be an nxn triangle tile plot where n is 
+# the number of GMS clusters. Intensity of hue should match significance. 
+# Ideally, tiles matching the same cluster should be greyed out.
 
 
 
@@ -27,7 +24,7 @@ source("scripts/setup.R")
 configure_logger(log_file)
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
-library(vegan) # adonis2 (permanova) + betadisper
+library(energy)
 
 set.seed(254)
 
@@ -64,64 +61,23 @@ write_csv(df, glue("{outdir}/core_df.csv"))
 
 ### Define analysis functions ---------------------------------------------
 
-
 # Define null result dataframes (use when sample size too small or 
 # to avoid duplicate analyses)
-get_null_pw_permanova_result <- function (id_1, id_2) {
-  tibble(id_1, id_2, F = NA, R2 = NA, p = NA)
-}
-get_null_pw_betadisper_result <- function(id_1, id_2) {
-  tibble(id_1, id_2, F = NA, p = NA)
+get_na_energy_result <- function(clust1, clust2) {
+  tibble(clust1 = clust1, clust2 = clust2, statistic = NA, p = NA)
 }
 
-
-# Run pairwise permanova between two dataframes of shape features.
-# Assumes valid inputs (i.e., adequate size)
-pw_permanova <- function(id_1, id_2, df, full_dist_matrix) {
+# Run pairwise energy tests between two dataframes of shape features
+pairwise_energy <- function(clust1, clust2, df1, df2, feature_cols) {
   set.seed(254)
-  
-  # Get indices for each protein in dataframe assigned to either id_1 or id_2,
-  # then extract corresponding rows and columns from full distance matrix,
-  # and subset the dataframe at the row/protein indices
-  row_indices <- which(df$gms_cluster %in% c(id_1, id_2))
-  distance_matrix <- full_dist_matrix[row_indices, row_indices]
-  df_pair <- df[idx, ]
-  
-  # Run PERMANOVA
-  result <- adonis2(
-    distance_matrix ~ gms_cluster, data = df_pair, permutations = 9 # 199 later
-  )
-  
+  X <- as.matrix(df1[, feature_cols])
+  Y <- as.matrix(df2[, feature_cols])
+  result <- eqdist.etest(rbind(X, Y), sizes = c(nrow(X), nrow(Y)), R = 9)
   return(tibble(
-    id_1 = id_1, id_2 = id_2,
-    F = result$F[1],
-    R2 = result$R2[1],
-    p = result$`Pr(>F)`[1]
-  ))
-
-}
-
-
-# Run pairwise betadisper between two dataframes of shape features.
-# Assumes valid inputs.
-pw_betadisper <- function(id_1, id_2, df_1, df_2, full_dist_matrix) {
-  set.seed(254)
-  
-  # Get indices for each protein in dataframe assigned to either id_1 or id_2,
-  # then extract corresponding rows and columns from full distance matrix,
-  # and subset the dataframe at the row/protein indices
-  row_indices <- which(df$gms_cluster %in% c(id_1, id_2))
-  distance_matrix <- full_dist_matrix[row_indices, row_indices]
-  df_pair <- df[idx, ]
-  
-  # Run betadisper
-  bd <- betadisper(dist_sub, df_pair$gms_cluster)
-  anova_result <- anova(bd)
-  
-  return(tibble(
-    id_1 = id_1, id_2 = id_2,
-    F = anova_result$`F value`[1],
-    p = anova_result$`Pr(>F)`[1]
+    clust1 = clust1,
+    clust2 = clust2,
+    statistic = result$statistic,
+    p = result$p.value
   ))
 }
 
@@ -150,69 +106,38 @@ adjust_pvalues <- function(results_df) {
 
 clusters <- unique(sort(df$gms_cluster))
 min_size <- 10 # Require at least 10 proteins in a cluster to do a comparison
+feature_cols <- c("mean_pLDDT", "log_length", "log_kurtosis", "coeff_var", "eccentricity")
 
-log_info("Computing full distance matrix ...")
-feature_cols <- c("mean_pLDDT", "log_length", "eccentricity", "coeff_var", "log_kurtosis")
-full_dist_matrix <- as.matrix(dist(df[, feature_cols], method = "euclidean"))
-
-
-# Get unadjusted pairwise PERMANOVA results
-log_info("Running pairwise PERMANOVA ...")
-permanova_results <- bind_rows(lapply(clusters, function (clust1) {
+# Get unadjusted pairwise energy test results
+log_info("Running pairwise energy tests ...")
+energy_results <- bind_rows(lapply(clusters, function (clust1) {
   results <- future_lapply(
-    clusters, 
-    function (clust2, clust1, df, min_size, full_dist_matrix) {
-    
-      # Return NA result if appropriate
+    clusters,
+    function (clust2, clust1, df, min_size, feature_cols) {
+      
       if (clust2 <= clust1)
-        return(get_null_pw_permanova_result(clust1, clust2))
-      if (sum(df$gms_cluster == clust1) < min_size ||
-          sum(df$gms_cluster == clust2) < min_size)
-        return(get_null_pw_permanova_result(clust1, clust2))
+        return(get_na_energy_result(clust1, clust2))
       
-      return(pw_permanova(clust1, clust2, df, full_dist_mat))
-  
-    }, 
-    clust1=clust1, df=df, min_size=min_size, 
-    full_dist_matrix=full_distance_matrix, 
-    future.seed = TRUE
-  )
-  return(bind_rows(results))
-}))
-
-
-# Get unadjusted pairwise betadisper results
-log_info("Running pairwise betadisper ...")
-betadisper_results <- bind_rows(lapply(clusters, function (clust1) {
-  results <- future_lapply(
-    clusters, 
-    function (clust2, clust1, df, min_size, full_dist_matrix) {
+      df1 <- df |> filter(gms_cluster == clust1)
+      df2 <- df |> filter(gms_cluster == clust2)
+      if (nrow(df1) < min_size || nrow(df2) < min_size) {
+        return(get_na_energy_result(clust1, clust2))
+      }
+      
+      return(pairwise_energy(clust1, clust2, df1, df2, feature_cols))
     
-      # Return NA result if appropriate
-      if (clust2 <= clust1)
-        return(get_null_pw_betadisper_result(clust1, clust2))
-      if (sum(df$gms_cluster == clust1) < min_size ||
-          sum(df$gms_cluster == clust2) < min_size)
-        return(get_null_pw_permanova_result(clust1, clust2))
-      
-      return(pw_betadisper(clust1, clust2, df, full_dist_matrix))
-      
     },
-    clust1=clust1, df=df, min_size, 
-    full_distance_matrix=full_distance_matrix, 
+    clust1=clust1, df=df, min_size=min_size, feature_cols=feature_cols,
     future.seed = TRUE
   )
   return(bind_rows(results))
 }))
 
 
-# Adjust pairwise PERMANOVA and betadisper results for multiple testing,
-# then write to file
+# Adjust pairwise energy results for multiple testing, then write to file
 log_info("Adjusting for multiple testing ...")
-permanova_results <- adjust_pvalues(permanova_results)
-betadisper_results <- adjust_pvalues(betadisper_results)
-write_csv(permanova_results, glue("{outdir}/permanova_results.csv"))
-write_csv(betadisper_results, glue("{outdir}/betadisper_results.csv"))
+energy_results <- adjust_pvalues(energy_results)
+write_csv(energy_results, glue("{outdir}/energy_results.csv"))
 
 
 
@@ -223,7 +148,7 @@ write_csv(betadisper_results, glue("{outdir}/betadisper_results.csv"))
 
 
 
-
+log_info("Done!")
 
 
 
