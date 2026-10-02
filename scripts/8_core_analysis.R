@@ -158,9 +158,12 @@ energy_results <- bind_rows(lapply(clusters, function (clust1) {
 # Treat different feature sets as independent tests therefore requiring 
 # independent adjustment.
 log_info("Adjusting for multiple testing ...")
-all_energy_results <- adjust_pvalues(energy_results |> filter(features == "all"))
-core_energy_results <- adjust_pvalues(energy_results |> filter(features == "core"))
-irreg_energy_results <- adjust_pvalues(energy_results |> filter(features == "irreg"))
+all_energy_results <- adjust_pvalues(
+  energy_results |> filter(features == "All Shape\nFeatures"))
+core_energy_results <- adjust_pvalues(
+  energy_results |> filter(features == "Core Shape\nFeatures"))
+irreg_energy_results <- adjust_pvalues(
+  energy_results |> filter(features == "Shape Irregularity\nFeatures"))
 write_csv(all_energy_results, glue("{outdir}/energy_results_all_features.csv"))
 write_csv(core_energy_results, glue("{outdir}/energy_results_core_features.csv"))
 write_csv(irreg_energy_results, glue("{outdir}/energy_results_irreg_features.csv"))
@@ -183,22 +186,25 @@ log_sig_result_summary <- function (df, name) {
       q1 = quantile(p_adj, 0.25), median = median(p_adj),
       q3 = quantile(p_adj, 0.75), max = max(p_adj)
     ),
-    glue("{outdir}/p_adj_summary_stats_{name}.csv")
+    glue("{outdir}/p_adj_summary_stats_{clean_string(name)}.csv")
   )
 }
-log_sig_result_summary(all_energy_results)
-log_sig_result_summary(core_energy_results)
-log_sig_result_summary(irreg_energy_results)
+log_sig_result_summary(all_energy_results, "All Shape Features")
+log_sig_result_summary(core_energy_results, "Core Shape Features")
+log_sig_result_summary(irreg_energy_results, "Shape Irregularity Features")
 
 # Draw horizontal violin plots illustrating p-value distribution
 feature_p_vals <- bind_rows(
   all_energy_results, core_energy_results, irreg_energy_results
   ) |> select(features, p_adj) |>
-  mutate(
-    "All Shape\nFeatures" = "all", 
-    "Core Shape\nFeatures" = "core", 
-    "Shape Irregularity\nFeatures" = "irreg"
-  ) |> arrange(feature)
+feature_p_vals$features <- factor(
+  feature_p_vals$features,
+  levels = c(
+    "All Shape\nFeatures",
+    "Core Shape\nFeatures",
+    "Shape Irregularity\nFeatures"
+  )
+)
 plt <- ggplot(feature_p_vals, aes(x = feature, y = p_adj)) +
   geom_violin(trim = FALSE) +
   geom_jitter( # add visible points
