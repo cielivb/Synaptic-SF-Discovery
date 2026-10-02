@@ -1,6 +1,16 @@
-# Data directories
+# Data directories and files
 data/
-results/
+*.csv
+*.tar
+*.gz
+*.cif.gz
+*.pdb.gz
+*.pdb
+*.json
+
+# Miscellaneous
+*.pdf
+
 
 # History files
 .Rhistory
