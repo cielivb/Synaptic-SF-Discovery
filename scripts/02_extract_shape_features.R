@@ -1,7 +1,7 @@
 # Extract core synaptic protein shape features.
 
 outdir <- "results/02_extract_shape_features"
-log_file = "logs/02_extract_shape_data.log"
+log_file <- "logs/02_extract_shape_data.log"
 source("scripts/setup.R")
 configure_logger(log_file)
 
