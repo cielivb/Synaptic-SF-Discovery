@@ -1,26 +1,17 @@
 #!/usr/bin/env bash
 
 # usage
-# extract_atom_sites.sh bulk_afdb_path.tar organism_name
+# extract_atom_sites.sh pdb_dir csv_dir
 
-BULK_AFDB_FILE="$1" # e.g., data/afdb_tar/XXX.tar
-ORGANISM="$2" # e.g., fruit_fly
+PDB_DIR=$1
+CSV_DIR=$2
 
-# Create directories
-EXTRACTED_DIR="data/afdb_extracted/$ORGANISM/"
-ATOM_SITE_DIR="data/atom_sites/$ORGANISM/"
-mkdir -p "$EXTRACTED_DIR" "$ATOM_SITE_DIR"
+# Extract atomsite data from each .pdb file in PDB_DIR
+for FILE in "$PDB_DIR"/*.pdb; do
 
-# Extract .tar archive into EXTRACTED_DIR
-tar -xf "$BULK_AFDB_FILE" -C "$EXTRACTED_DIR"
+    UNIPROT=$(basename "$FILE" | cut -d'-' -f2)
 
-# Unzip all .pdb.gz files
-gzip -d "$EXTRACTED_DIR"*.pdb.gz
-
-# Extract atomsite data from each .pdb file
-for FILE in "$EXTRACTED_DIR"*.pdb; do
-
-    OUT_CSV="$ATOM_SITE_DIR/$(basename "$FILE" .pdb).csv"
+    OUT_CSV="$CSV_DIR/$UNIPROT.csv"
     echo "residue,x,y,z,pLDDT" > "$OUT_CSV" # header line
 
     awk '

@@ -1,15 +1,7 @@
-# Restore packages from lockfile, log execution metadata, create species table, 
-# and set up cluster
-
-### MAKE DIRECTORIES -----------------------------------------------------------
-
-system("mkdir -p data/goa results/goa_cleaning")
-system("mkdir -p data/afdb_tar data/atom_sites data/geometry")
-system("mkdir -p data/clusters results/clusters/umap")
-system("mkdir -p results/clusters/similarity")
+# Set up environment
 
 
-### RESTORE PACKAGES FROM LOCKFILE ---------------------------------------------
+### Restore packages from lockfile ----------------------------------------
 
 # Install renv if not already installed
 if (!requireNamespace("renv", quietly = TRUE)) {
@@ -21,145 +13,49 @@ if (!requireNamespace("renv", quietly = TRUE)) {
 # Restore R environment from lockfile
 renv::restore(lockfile = "renv.lock", clean = TRUE, prompt = FALSE)
 
-# Load packages
+# Load packages used in most scripts
 library(dplyr)
-library(ggplot2)
+library(future)
+library(future.apply)
 library(glue)
-library(gridExtra)
-library(httr2)
-library(jsonlite)
 library(logger)
-library(parallel)
 library(readr)
-library(tidyr)
-library(vegan)
+
+options(dplyr.summarise.inform = FALSE)
 
 
-### SET UP LOGGER AND LOG EXECUTION METADATA -----------------------------------
+### Create project directories --------------------------------------------
 
-# Initialise logger
-LOGFILE <- "results/analysis.log"
-if (file.exists(LOGFILE)) {
-  file.remove(LOGFILE)
-}
-log_appender(appender_console)
-log_appender(appender_file(LOGFILE), index = 2)
-
-# Log R version
-log_info(glue("Using R version {getRversion()}"))
-
-# Log general metadata
-log_info(glue("Running on platform: {R.version$platform}"))
-log_info(glue("Locale info: {Sys.getlocale()}"))
-log_info(glue("Kernel release: {Sys.info()['release']}"))
-log_info(glue("Kernel version: {Sys.info()['version']}"))
-
-# Log environment package metadata
-pkgs <- c("dplyr", "ggplot2", "glue", "gridExtra", "httr2", "jsonlite", "logger")
-log_info("Environment packages:")
-for (pkg in pkgs) {
-  log_info(glue("{pkg}: {as.character(packageVersion(pkg))}"))
-}
-
-
-### CREATE GLOBAL SPECIES TABLE ------------------------------------------------
-
-SPECIES <- tibble(
-  common_name = c("human", "fruit_fly", "mouse", "rat", "worm", "zebrafish"),
-  species = c(
-    "Homo sapiens", 
-    "Drosophila melanogaster", 
-    "Mus musculus", 
-    "Rattus norvegicus",
-    "Caenorhabditis elegans",
-    "Danio rerio"
-  ),
-  goa_endpoint = c(
-    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz",
-    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/FLY/goa_fly.gaf.gz",
-    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/MOUSE/goa_mouse.gaf.gz",
-    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/RAT/goa_rat.gaf.gz",
-    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/WORM/goa_worm.gaf.gz",
-    "https://ftp.ebi.ac.uk/pub/databases/GO/goa/ZEBRAFISH/goa_zebrafish.gaf.gz"
-  ),
-  afdb_endpoint = c(
-    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000005640_9606_HUMAN_v6.tar",
-    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000000803_7227_DROME_v6.tar",
-    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000000589_10090_MOUSE_v6.tar",
-    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000002494_10116_RAT_v6.tar",
-    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000001940_6239_CAEEL_v6.tar",
-    "https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000000437_7955_DANRE_v6.tar"
-  )
+dir.create("logs", showWarnings = FALSE)
+dir.create("data", showWarnings = FALSE)
+dir.create("results", showWarnings = FALSE)
+result_dirs <- list(
+  "01_filter_proteins", "02_extract_shape_features", 
+  "03_extract_go_module_scores", "04_cluster_by_gms",
+  "05_describe_gms_cluster_func", "06_make_taxa_plots",
+  "07_make_shape_plots", "08_core_analysis",
+  "09_make_gms_cluster_summaries", "10_make_misc"
 )
-
-SPECIES <- SPECIES |>
-  mutate(
-    goa_path = file.path("data/goa", basename(goa_endpoint)),
-    afdb_tar_path = file.path("data/afdb_tar", basename(afdb_endpoint)),
-    atom_sites_dir = file.path("data/atom_sites", common_name),
-    geom_path = file.path("data/geometry", glue("{common_name}_geometry.csv")),
-    clusters_path = file.path("data/clusters", glue("{common_name}_clusters.csv"))
-  )
-
-
-### SET UP AND START CLUSTER ---------------------------------------------------
-
-CLUSTER <- makeCluster(detectCores())
-
-clusterExport(CLUSTER, "LOGFILE")
-clusterEvalQ(CLUSTER, {
-  library(dbscan)
-  library(dplyr)
-  library(ggplot2)
-  library(glue)
-  library(gridExtra)
-  library(httr2)
-  library(jsonlite)
-  library(logger)
-  library(parallel)
-  library(readr)
-  library(tidyr)
-  library(uwot)
-  library(vegan)
-  log_appender(appender_console)
-  log_appender(appender_file(LOGFILE))
+lapply(result_dirs, function (d) {
+  dir.create(glue("results/{d}"), showWarnings = FALSE)
 })
 
-source("scripts/1_fetch_synaptic_protein_go_data.R")
-source("scripts/2_fetch_geometric_data.R")
-source("scripts/3_discover_geometric_protein_clusters.R")
-source("scripts/4_analyse_cluster_similarities.R")
 
-clusterExport(CLUSTER, c(
-  "SPECIES",
-  
-  # 1_fetch_synaptic_protein_go_data.R functions
-  "read_go_metadata",
-  "get_protein_and_go_counts",
-  "keep_synaptic_proteins",
-  "filter_organism_go_metadata",
-  
-  # 2_fetch_geometric_data.R functions
-  "create_atom_site_csvs",
-  "get_synaptic_protein_structure_paths",
-  "load_residue_level_structure",
-  "weighted_pca",
-  "get_radial_distances",
-  "get_length_along_pc1",
-  "get_radius_of_gyration",
-  "get_eccentricity",
-  "get_coefficient_of_variation",
-  "get_kurtosis",
-  "get_low_pLDDT_fraction",
-  "get_high_pLDDT_fraction",
-  "compute_protein_geometries",
-  
-  # 3_discover_geometric_protein_clusters.R functions
-  "cluster_proteins_by_geometry",
-  "plot_umap_embedding_clusters",
-  
-  # 4_analyse_cluster_similarities.R functions
-  "pairwise_permanova"
-  
-))
+### Define utility functions ----------------------------------------------
 
+configure_logger <- function(logfile, worker=FALSE) {
+  if (file.exists(logfile) & !worker) {
+    file.remove(logfile)
+  }
+  log_appender(appender_console)
+  log_appender(appender_file(logfile), index = 2)
+}
+
+# Remove punctuation and whitespace etc for consistent filename formatting
+clean_string <- function(s) {
+  cleaned <- s |>
+    gsub(" ", "_", x = _) |> 
+    gsub("[\\%()&#:/.,-]", "", x = _) |> 
+    tolower()
+  return(cleaned)
+}

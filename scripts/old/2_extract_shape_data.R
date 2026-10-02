@@ -1,37 +1,41 @@
-# Get basic geometric descriptions of synaptic proteins across organisms
+# Extract synaptic protein shape properties.
 
 
-# Retrieve PDB structure file from AFDB for each synaptic protein in organism
-download_organism_structure_data <- function(organism) {
-  endpoint <- SPECIES$afdb_endpoint[match(organism, SPECIES$common_name)]
-  outpath <- SPECIES$afdb_tar_path[match(organism, SPECIES$common_name)]
-  req_perform(request(endpoint), outpath)
-  log_info(glue("Downloaded {organism} AFDB structure data"))
-}
+source("scripts/setup.R")
+log_file = "logs/2_extract_shape_data.log"
+configure_logger(log_file)
+
+library(R.utils) # unzip gzipped files
 
 
-# Extract atom site data for each protein to csv
-create_atom_site_csvs <- function(organism) {
-  afdb_tar_path <- SPECIES$afdb_tar_path[match(organism, SPECIES$common_name)]
-  system(glue("scripts/extract_atom_sites.sh {afdb_tar_path} {organism}"))
-  log_info(glue("Created {organism} atom site csv files"))
-}
-
-
-# Get a list containing synaptic protein structure file paths
-get_synaptic_protein_structure_paths <- function(organism) {
-  # Get synaptic proteins in organism
-  go_df <- read_csv(glue("data/goa/{organism}_clean.csv"), show_col_types = FALSE)
-  synaptic_proteins <- go_df |> distinct(uniprot)
-  # Get Uniprot accessions from AFDB structure data file names and keep only
-  # those accessions and filepaths associated with synaptic proteins
-  atom_sites_dir <- SPECIES$atom_sites_dir[match(organism, SPECIES$common_name)]
-  df <- tibble(files = list.files(atom_sites_dir, full.names = TRUE))
-  df <- df |> 
-    mutate(uniprot = strsplit(basename(files), "-") |> sapply(`[[`, 2)) |>
-    filter(uniprot %in% synaptic_proteins$uniprot)
-  return(as.list(df$files))
+# Extract atomic coordinates for each synaptic protein from AFDB .tar archive
+extract_atom_site_data <- function(taxon, afdb_taxon_tar, atom_site_csv_dir) {
+  # Extract .tar archive
+  extract_tar_dir <- glue("results/2_extract_shape_data/{taxon}_extracted_tar")
+  untar(afdb_taxon_tar, exdir = extract_tar_dir)
   
+  # Make tibble containing path and uniprot for each synaptic protein in taxon
+  synaptic_uniprot <- read_csv(
+    glue("results/1_filter_by_func/{taxon}_uniprot_only.csv"), 
+    show_col_types = FALSE
+  )
+  pdb_tibble <- tibble(path = list.files(
+    extract_tar_dir, pattern = "\\.pdb\\.gz$", full.names = TRUE
+  )) |> 
+    mutate(uniprot = strsplit(basename(path), "-") |> sapply(`[[`, 2)) |>
+    semi_join(synaptic_uniprot, by = "uniprot")
+  
+  # Extract synaptic protein .pdb files
+  extract_pdb_dir <- glue("results/2_extract_shape_data/{taxon}_extracted_pdb")
+  dir.create(extract_pdb_dir, showWarnings = FALSE)
+  lapply(pdb_tibble$path, function(gzipped_path) {
+    dest <- file.path(extract_pdb_dir, sub("\\.gz$", "", basename(gzipped_path)))
+    gunzip(gzipped_path, dest, remove = FALSE)
+  })
+  
+  # Extract atom site data for each synaptic protein in each species
+  dir.create(atom_site_csv_dir, showWarnings = FALSE)
+  system(glue("scripts/extract_atom_sites.sh {extract_pdb_dir} {atom_site_csv_dir}"))
 }
 
 
@@ -46,6 +50,10 @@ load_residue_level_structure <- function(path) {
     )
   return(residue_site_df)
 }
+
+
+
+
 
 
 # Get PC scores, eigenvectors, and eigenvalues, weighting by weights column
@@ -131,15 +139,41 @@ get_high_pLDDT_fraction <- function(pLDDT_vector) {
 }
 
 
-# Create a CSV where each row represents a synaptic protein and contains data
-# about that protein's geometry and overall structure confidence
-compute_protein_geometries <- function(organism) {
-  
-  geom_file <- SPECIES$geom_path[match(organism, SPECIES$common_name)]
-  syn_prot_structure_paths <- get_synaptic_protein_structure_paths(organism)
 
-  # Write geometric description of each synaptic protein to geom_file CSV
-  lapply(syn_prot_structure_paths, function(path) {
+
+
+
+# Use 1 worker per taxon, or if less than 6 cores available, just use one
+# worker per core
+available_cores <- parallel::detectCores(logical = FALSE)
+plan(multisession, workers = min(available_cores, 6))
+
+download_meta <- read_csv("data/downloads.csv", show_col_types = FALSE)
+afdb_taxon_meta <- download_meta |> filter(category == "afdb_taxon")
+
+
+
+
+# Extract shape data for each taxon in parallel
+log_info("Extracting shape data for each taxon ...")
+done <- future_lapply(afdb_taxon_meta$destination, function (afdb_taxon_tar) {
+  configure_logger(log_file, worker = TRUE)
+  
+  taxon <- sub("\\.tar$", "", basename(afdb_taxon_tar)) # e.g., worm
+  geom_file <- glue("results/2_extract_shape_data/{taxon}_geom.csv")
+  
+  # Get .csv file per protein containing atom site coordinate + confidence data
+  log_info(glue("Extracting {taxon} atom site data ..."))
+  atom_site_csv_dir <- glue("results/2_extract_shape_data/{taxon}_atom_sites_csv")
+  extract_atom_site_data(taxon, afdb_taxon_tar, atom_site_csv_dir)
+  atom_site_paths <- list.files(atom_site_csv_dir, full.names = TRUE)
+  log_info(glue("Extracted {taxon} atom site data"))
+  
+  
+  
+  # Write full geometric description of each synaptic protein to geom_file csv
+  log_info(glue("Computing {taxon} protein geometry ..."))
+  lapply(atom_site_paths, function(path) {
     
     # Load structure data and create evenly weighted weights column, then
     # create geometric descriptor tibble for full structure
@@ -148,7 +182,7 @@ compute_protein_geometries <- function(organism) {
     wpca_f <- weighted_pca(residue_df_f)
     radial_distances_f <- get_radial_distances(wpca_f$centred_coords)
     geom_df_f <- tibble(
-      uniprot = strsplit(basename(path), "-")[[1]][2],
+      uniprot = sub("\\.csv$", "", basename(path)),
       high_pLDDT = get_high_pLDDT_fraction(residue_df_f$pLDDT), # confident core
       low_pLDDT = get_low_pLDDT_fraction(residue_df_f$pLDDT), # disorder proxy
       length_f = get_length_along_pc1(wpca_f$pc_scores),
@@ -157,7 +191,7 @@ compute_protein_geometries <- function(organism) {
       coeff_var_f = get_coefficient_of_variation(radial_distances_f),
       kurtosis_f = get_kurtosis(radial_distances_f)
     )
-
+    
     # Create a high confidence subset and normalise pLDDT into true weights,
     # then create geometric descriptor tibble for core/high confidence subset
     residue_df_hc <- residue_df_f |> 
@@ -180,28 +214,21 @@ compute_protein_geometries <- function(organism) {
       )
     }
     
-    # Merge full structure geometric descriptor tibble with subset tibble,
-    # then compute ratios and write to csv
-    geom_df <- bind_cols(geom_df_f, geom_df_hc) |>
-      mutate(
-        length_ratio = ifelse(is.na(length_hc), NA, length_f / length_hc),
-        rg_ratio = ifelse(is.na(rg_hc), NA, rg_f / rg_hc),
-        eccentricity_ratio = ifelse(
-          is.na(eccentricity_hc), NA, eccentricity_f / eccentricity_hc
-        ),
-        coeff_var_ratio = ifelse(
-          is.na(coeff_var_hc), NA, coeff_var_f / coeff_var_hc
-        ),
-        kurtosis_ratio = ifelse(is.na(kurtosis_hc), NA, kurtosis_f / kurtosis_hc)
-      )
+    # Merge full tibble with high confidence tibble and append protein geometric
+    # description to csv
+    geom_df <- bind_cols(geom_df_f, geom_df_hc)
     if (!file.exists(geom_file)) {
       write_csv(geom_df, geom_file, append = FALSE, col_names = TRUE)
     } else {
       write_csv(geom_df, geom_file, append = TRUE, col_names = FALSE)
     }
     
+    
   })
+  log_info(glue("Computed {taxon} protein geometry"))
   
-  log_info(glue("Computed {organism} protein geometries"))
-  
-}
+})
+
+
+log_info("Extracted shape data for each taxon")
+log_info("Shape data extraction script done")
