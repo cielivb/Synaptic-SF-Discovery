@@ -24,6 +24,9 @@ source("scripts/setup.R")
 configure_logger(log_file)
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
+library(png)
+library(grid)
+library(gridExtra)
 library(ggplot2)
 library(energy)
 
@@ -109,107 +112,204 @@ log_info("Running pairwise energy tests ...")
 
 clusters <- unique(sort(df$gms_cluster))
 min_size <- 10 # Require at least 10 proteins in a cluster to do a comparison
-feature_cols <- c("mean_pLDDT", "log_length", "log_kurtosis", "coeff_var", "eccentricity")
 
 # Get unadjusted pairwise energy test results
 energy_results <- bind_rows(lapply(clusters, function (clust1) {
   results <- future_lapply(
     clusters,
-    function (clust2, clust1, df, min_size, feature_cols) {
+    function (clust2, clust1, df, min_size) {
       
+      # Skip duplicate tests or tests with tiny clusters
       if (clust1 <= clust2)
         return(get_na_energy_result(clust1, clust2))
-      
       df1 <- df |> filter(gms_cluster == clust1)
       df2 <- df |> filter(gms_cluster == clust2)
       if (nrow(df1) < min_size || nrow(df2) < min_size) {
         return(get_na_energy_result(clust1, clust2))
       }
       
-      return(pairwise_energy(clust1, clust2, df1, df2, feature_cols))
+      # Define shape feature sets
+      all_features <- c(
+        "mean_pLDDT", "log_length", "log_kurtosis", "coeff_var", "eccentricity"
+      )
+      core_features <- c("mean_pLDDT", "log_length")
+      irregularity_features <- c("log_kurtosis", "coeff_var", "eccentricity")
+      
+      # Get energy results for each shape feature set
+      all_result <- pairwise_energy(clust1, clust2, df1, df2, all_features) |>
+        mutate(features = "all")
+      core_result <- pairwise_energy(clust1, clust2, df1, df2, core_features) |>
+        mutate(features = "core")
+      irreg_result <- pairwise_energy(
+        clust1, clust2, df1, df2, irregularity_features) |>
+        mutate(features = "irreg")
+      
+      # Combine results and return
+      return(bind_rows(all_result, core_result, irreg_result))
     
     },
-    clust1=clust1, df=df, min_size=min_size, feature_cols=feature_cols,
-    future.seed = TRUE
+    clust1=clust1, df=df, min_size=min_size, future.seed = TRUE
   )
   return(bind_rows(results))
 }))
 
 
-# Adjust pairwise energy results for multiple testing, then write to file
+# Adjust pairwise energy results for multiple testing, then write to file.
+# Treat different feature sets as independent tests therefore requiring 
+# independent adjustment.
 log_info("Adjusting for multiple testing ...")
-energy_results <- adjust_pvalues(energy_results)
-write_csv(energy_results, glue("{outdir}/energy_results.csv"))
-
-# Log number of significant results and write summary
-num_sig <- nrow(energy_results |> filter(p_adj < 0.05))
-log_info(glue("{num_sig} significant results found"))
-p_adj <- energy_results$p_adj
-write_csv(
-  tibble(
-    mean = mean(p_adj), sd = sd(p_adj), min = min(p_adj),
-    q1 = quantile(p_adj, 0.25), median = median(p_adj),
-    q3 = quantile(p_adj, 0.75), max = max(p_adj)
-  ),
-  glue("{outdir}/p_adj_summary_stats.csv")
-)
+all_energy_results <- adjust_pvalues(energy_results |> filter(features == "all"))
+core_energy_results <- adjust_pvalues(energy_results |> filter(features == "core"))
+irreg_energy_results <- adjust_pvalues(energy_results |> filter(features == "irreg"))
+write_csv(all_energy_results, glue("{outdir}/energy_results_all_features.csv"))
+write_csv(core_energy_results, glue("{outdir}/energy_results_core_features.csv"))
+write_csv(irreg_energy_results, glue("{outdir}/energy_results_irreg_features.csv"))
 
 
 
-### Create tile plot (core result!!!) -------------------------------------
 
-log_info("Creating tile plot ...")
+### Inspect p-value distributions -----------------------------------------
 
-# Drop all rows where clust2 <= clust1 - not required for triangle tile plot
-energy_results <- energy_results |> filter(clust1 > clust2)
+log_info("Inspecting p-value distributions ...")
 
-# Add tile aesthetics settings
-energy_results <- energy_results |>
-  mutate(
-    is_sig = (p_adj < 0.05),
-    clust1 = factor(clust1),
-    clust2 = factor(clust2)
-  ) |>
-  mutate(alpha = ifelse(is_sig, 1 - p_adj, 0)) |> # make non-sig invisible, and sig visible
-  mutate(
-    alpha = ifelse(is.na(p_adj), 1, alpha), # make grey/NA visible
-    label = ifelse(is_sig, sprintf("%.3f", p_adj), "")
-  )
-
-# Create triangular tile plot
-plt <- ggplot(energy_results, aes(x = clust1, y = clust2)) +
-  geom_tile(aes(fill = is_sig, alpha = alpha), color = "grey80") +
-  geom_text(aes(label = label), size = 3, color = "black") +
-  scale_fill_manual(
-    values = c(
-      "TRUE"  = "#2ECC71", # significant -> green
-      "FALSE" = "white" # non‑significant -> white
+# Log number of significant results and write quick statistical summary
+log_sig_result_summary <- function (df, name) {
+  num_sig <- nrow(df |> filter(p_adj < 0.05))
+  log_info(glue("{name}: {num_sig} significant results found"))
+  p_adj <- df$p_adj
+  write_csv(
+    tibble(
+      mean = mean(p_adj), sd = sd(p_adj), min = min(p_adj),
+      q1 = quantile(p_adj, 0.25), median = median(p_adj),
+      q3 = quantile(p_adj, 0.75), max = max(p_adj)
     ),
-    guide = "none"
-  ) +
-  scale_alpha(range = c(0.2, 1), guide = "none") +
-  geom_tile( # NA tiles need to be grey — override using a second layer
-    data = subset(energy_results, is.na(p_adj)), 
-    fill = "grey80", color = "grey80"
-  ) +
-  scale_x_discrete(limits = rev) +
-  coord_fixed() +
-  labs(
-    x = "Cluster",
-    y = "Cluster",
-    title = "Pairwise Energy Test Significance Matrix",
-    subtitle = "All Shape Features"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(size = 18, hjust = 0.5),
-    plot.subtitle = element_text(size = 12, hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid = element_blank()
+    glue("{outdir}/p_adj_summary_stats_{name}.csv")
   )
-svg(glue("{outdir}/core_result.svg"), height = 12, width = 12)
+}
+log_sig_result_summary(all_energy_results)
+log_sig_result_summary(core_energy_results)
+log_sig_result_summary(irreg_energy_results)
+
+# Draw horizontal violin plots illustrating p-value distribution
+feature_p_vals <- bind_rows(
+  all_energy_results, core_energy_results, irreg_energy_results
+  ) |> select(features, p_adj) |>
+  mutate(
+    "All Shape\nFeatures" = "all", 
+    "Core Shape\nFeatures" = "core", 
+    "Shape Irregularity\nFeatures" = "irreg"
+  ) |> arrange(feature)
+plt <- ggplot(feature_p_vals, aes(x = feature, y = p_adj)) +
+  geom_violin(trim = FALSE) +
+  stat_summary(fun = median, geom = "point", size = 1.5, color = "black") +
+  labs(title = "Pairwise Energy Test P-Value Distributions") +
+  theme_classic() +
+  theme(
+    plot.title = element_text(size = 16, hjust = 0.5),
+  )
+svg(glue("{outdir}/p_distr.svg"), height = 10, width = 12)
 print(plt)
 invisible(dev.off())
+
+
+
+
+### Prepare result dataframes for tile plots ------------------------------
+
+log_info("Adding aesthetics ...")
+
+add_aesthetic_data <- function (df) {
+  # Drop all rows where clust2 <= clust1 - not required for triangle tile plot
+  df <- df |> filter(clust1 > clust2)
+  
+  # Add tile aesthetics settings
+  df <- df |>
+    mutate(
+      is_sig = (p_adj < 0.05),
+      clust1 = factor(clust1),
+      clust2 = factor(clust2)
+    ) |>
+    mutate(alpha = ifelse(is_sig, 1 - p_adj, 0)) |> # make non-sig invisible, and sig visible
+    mutate(
+      alpha = ifelse(is.na(p_adj), 1, alpha), # make grey/NA visible
+      label = ifelse(is_sig, sprintf("%.3f", p_adj), "")
+    )
+  return(df)
+  
+}
+all_energy_results <- add_aesthetic_data(all_energy_results)
+core_energy_results <- add_aesthetic_data(core_energy_results)
+irreg_energy_results <- add_aesthetic_data(irreg_energy_results)
+
+
+
+
+### Create tile plots (core results!!!) -----------------------------------
+
+log_info("Creating tile plots ...")
+
+# Create triangular tile plot
+make_tile_plot <- function (df, subtitle) {
+  plt <- ggplot(df, aes(x = clust1, y = clust2)) +
+    geom_tile(aes(fill = is_sig, alpha = alpha), color = "grey80") +
+    geom_text(aes(label = label), size = 3, color = "black") +
+    scale_fill_manual(
+      values = c(
+        "TRUE"  = "#2ECC71", # significant -> green
+        "FALSE" = "white" # non‑significant -> white
+      ),
+      guide = "none"
+    ) +
+    scale_alpha(range = c(0.2, 1), guide = "none") +
+    geom_tile( # NA tiles need to be grey — override using a second layer
+      data = subset(df, is.na(p_adj)), 
+      fill = "grey80", color = "grey80"
+    ) +
+    scale_x_discrete(limits = rev) +
+    coord_fixed() +
+    labs(
+      x = "Cluster",
+      y = "Cluster",
+      title = "Pairwise Energy Test Significance Matrix",
+      subtitle = subtitle
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(size = 18, hjust = 0.5),
+      plot.subtitle = element_text(size = 12, hjust = 0.5),
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      panel.grid = element_blank()
+    )
+  png(
+    glue("{outdir}/{clean_string(subtitle)}.png"), 
+    height = 12, width = 12, units = "in", res = 300
+  )
+  print(plt)
+  invisible(dev.off())
+}
+
+# Make tile plots for each feature set
+make_tile_plot(all_energy_results, "All Shape Features")
+make_tile_plot(core_energy_results, "Core Shape Features")
+make_tile_plot(irreg_energy_results, "Shape Irregularity Features")
+
+# Stitch tile plots together
+plts <- c(
+  glue("{outdir}/{clean_string('All Shape Features'}.png"),
+  glue("{outdir}/{clean_string('Core Shape Features'}.png"),
+  glue("{outdir}/{clean_string('Shape Irregularity Features'}.png"),
+)
+imgs <- lapply(plts, function (path) {
+  rasterGrob(readPNG(path), interpolate = TRUE)
+})
+grid_plt <- grid.arrange(grobs = imgs, ncol = 3)
+png(
+  glue("{outdir}/result_grid.png"),
+  width = 36, height = 12, units = "in", res = 300
+)
+grid.draw(grid_plt)
+invisible(dev.off())
+
 
 
 

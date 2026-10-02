@@ -159,5 +159,5 @@ png(
   width = 20, height = 16, units = "in", res = 300
 )
 grid.draw(grid_plt)
-dev.off()
+invisible(dev.off())
 
