@@ -201,13 +201,18 @@ feature_p_vals <- bind_rows(
   ) |> arrange(feature)
 plt <- ggplot(feature_p_vals, aes(x = feature, y = p_adj)) +
   geom_violin(trim = FALSE) +
-  stat_summary(fun = median, geom = "point", size = 1.5, color = "black") +
+  geom_jitter( # add visible points
+    width = 0.15, height = 0, # no jitter on p-val points, just side-to-side
+    size = 1.5, alpha = 0.6, color = "black"
+  ) +
+  geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
   labs(title = "Pairwise Energy Test P-Value Distributions") +
+  coord_flip() +
   theme_classic() +
   theme(
     plot.title = element_text(size = 16, hjust = 0.5),
   )
-svg(glue("{outdir}/p_distr.svg"), height = 10, width = 12)
+svg(glue("{outdir}/p_distr.svg"), height = 12, width = 8)
 print(plt)
 invisible(dev.off())
 
