@@ -12,7 +12,7 @@ library(ggplot2)
 
 # Create stacked histogram of proteins per cluster, coloured by taxon
 cluster_counts <- read_csv(
-  "results/4_cluster_by_gms/cluster_counts.csv",
+  "results/04_cluster_by_gms/cluster_counts.csv",
   show_col_types = FALSE
 ) |> pull(n_proteins)
 svg(glue("{outdir}/proteins_per_gms_cluster.svg"), height = 8, width = 8)
