@@ -1,5 +1,6 @@
 # Data directories and files
-data/
+data/**
+!data/downloads.csv
 *.csv
 *.tar
 *.gz
