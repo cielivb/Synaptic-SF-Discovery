@@ -1,0 +1,18 @@
+INFO [2026-10-03 14:56:57] Running 01_filter_proteins.R ...
+INFO [2026-10-03 14:57:03] Cleaning GO Slim Synapse data ...
+INFO [2026-10-03 14:57:04] Mapping synaptic GO IDs to ancestor GO IDs ...
+INFO [2026-10-03 14:57:10] Finding proteins associated with neuron-neuron synapses ...
+INFO [2026-10-03 14:57:15] fly: 249585 annotations & 12610 proteins before filter
+INFO [2026-10-03 14:57:15] fly: 18417 annotations & 52 proteins after filter
+INFO [2026-10-03 14:57:18] worm: 168507 annotations & 12021 proteins before filter
+INFO [2026-10-03 14:57:18] worm: 10705 annotations & 31 proteins after filter
+INFO [2026-10-03 14:57:18] zebrafish: 280718 annotations & 23343 proteins before filter
+INFO [2026-10-03 14:57:19] zebrafish: 17274 annotations & 50 proteins after filter
+INFO [2026-10-03 14:57:20] human: 1111951 annotations & 19678 proteins before filter
+INFO [2026-10-03 14:57:20] human: 48600 annotations & 133 proteins after filter
+INFO [2026-10-03 14:57:20] rat: 939513 annotations & 20016 proteins before filter
+INFO [2026-10-03 14:57:21] rat: 30359 annotations & 78 proteins after filter
+INFO [2026-10-03 14:57:21] mouse: 1143576 annotations & 21439 proteins before filter
+INFO [2026-10-03 14:57:21] mouse: 30097 annotations & 78 proteins after filter
+INFO [2026-10-03 14:57:22] Protein filtration script done
+INFO [2026-10-03 14:57:22] End 01_filter_proteins.R
