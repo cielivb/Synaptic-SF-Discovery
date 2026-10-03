@@ -1,0 +1,15 @@
+category,dataset,notes,purpose,size_compressed,size_uncompressed,license,endpoint,destination
+go_misc,GO SLIM Synapse Data,"Subset of the GO ontology pertaining to synapses; no hierarchical preservation; contains link to GO ID in column 1, and name in column 2",Use synapse-associated GO IDs to filter proteins into synaptic protein subset,NA,30.3 KiB,,http://release.geneontology.org/2026-08-05/ontology/subsets/goslim_synapse.tsv,data/goslim_synapse.tsv
+go_misc,Gene Ontology Graph (Basic),"Acyclic gene Ontology Graph describing hierarchical relationships between GO terms; ""excludes relationships that cross the 3 GO hierarchies""",Use as model graph for creating ancestor-descendant subgraph for synaptic GO IDs,NA,67.9 MiB,,https://purl.obolibrary.org/obo/go/go-basic.json,data/go-basic.json
+go_taxon,GO Human Data,,,11 MiB,,,https://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz,data/go_taxon/human.gaf.gz
+go_taxon,GO Fly Data,,,3.2 MiB,,,https://ftp.ebi.ac.uk/pub/databases/GO/goa/FLY/goa_fly.gaf.gz,data/go_taxon/fly.gaf.gz
+go_taxon,GO Mouse Data,,,9.3 MiB,,,https://ftp.ebi.ac.uk/pub/databases/GO/goa/MOUSE/goa_mouse.gaf.gz,data/go_taxon/mouse.gaf.gz
+go_taxon,GO Rat Data,,,7.4 MiB,,,https://ftp.ebi.ac.uk/pub/databases/GO/goa/RAT/goa_rat.gaf.gz,data/go_taxon/rat.gaf.gz
+go_taxon,GO Zebrafish Data,,,3.7 MiB,,,https://ftp.ebi.ac.uk/pub/databases/GO/goa/ZEBRAFISH/goa_zebrafish.gaf.gz,data/go_taxon/zebrafish.gaf.gz
+go_taxon,GO Worm Data,"All GO annotations associated with all proteins in c elegans;  no column labels in file; column 2 = uniprot accession, column 5 = GO ID",Annotate proteins with GO IDs to describe function,2.5 MiB,23.1 MiB,,https://ftp.ebi.ac.uk/pub/databases/GO/goa/WORM/goa_worm.gaf.gz,data/go_taxon/worm.gaf.gz
+afdb_taxon,AFDB Human Data,,,4.8 GiB,,,https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000005640_9606_HUMAN_v6.tar,data/afdb_taxon/human.tar
+afdb_taxon,AFDB Fly Data,,,2.2 GiB,,,https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000000803_7227_DROME_v6.tar,data/afdb_taxon/fly.tar
+afdb_taxon,AFDB Mouse Data,,,3.5 GiB,,,https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000000589_10090_MOUSE_v6.tar,data/afdb_taxon/mouse.tar
+afdb_taxon,AFDB Rat Data,,,3.5 GiB,,,https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000002494_10116_RAT_v6.tar,data/afdb_taxon/rat.tar
+afdb_taxon,AFDB Zebrafish Data,,,4.6 GiB,,,https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000000437_7955_DANRE_v6.tar,data/afdb_taxon/zebrafish.tar
+afdb_taxon,AFDB Worm Data,All .pdb and .cif files for proteins in c. elegans,Use to derive high-level structural properties of proteins,2.6 GiB,,,https://ftp.ebi.ac.uk/pub/databases/alphafold/v6/UP000001940_6239_CAEEL_v6.tar,data/afdb_taxon/worm.tar
