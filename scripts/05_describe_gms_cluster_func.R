@@ -6,6 +6,8 @@ outdir <- "results/05_describe_gms_cluster_func"
 log_file <- "logs/05_describe_gms_cluster_func.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+log_info("Running 05_describe_gms_cluster_func.R ...")
+
 dir.create(glue("{outdir}/cluster_dfs"), showWarnings = FALSE)
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
@@ -100,4 +102,5 @@ done <- future_lapply(gms_clusters, function (gms_cluster_id, outdir) {
 }, outdir = outdir)
 
 log_info("Done!")
+log_info("Ended 05_describe_gms_cluster_func.R")
 

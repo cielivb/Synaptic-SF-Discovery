@@ -7,6 +7,8 @@ outdir <- "results/07_make_shape_plots"
 log_file <- "logs/07_make_shape_plots.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+log_info("Running 07_make_shape_plots.R ...")
+
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
 
@@ -161,3 +163,7 @@ png(
 grid.draw(grid_plt)
 invisible(dev.off())
 
+
+
+log_info("Done!")
+log_info("Ended 07_make_shape_plots.R")

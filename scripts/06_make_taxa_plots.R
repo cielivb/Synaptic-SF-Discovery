@@ -12,6 +12,8 @@ outdir <- "results/06_make_taxa_plots"
 log_file <- "logs/06_make_taxa_plots.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+log_info("Running 06_make_taxa_plots.R ...")
+
 
 library(ggplot2)
 
@@ -84,3 +86,4 @@ invisible(dev.off())
 
 
 log_info("Done!")
+log_info("Ended 06_make_taxa_plots.R")

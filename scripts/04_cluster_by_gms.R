@@ -6,6 +6,8 @@ outdir <- "results/04_cluster_by_gms"
 log_file <- "logs/04_cluster_by_gms.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+log_info("Running 04_cluster_by_gms.R ...")
+
 
 library(dbscan)
 library(ggplot2)
@@ -361,5 +363,6 @@ invisible(dev.off())
 
 
 log_info("Done!")
+log_info("Ended 04_cluster_by_gms.R")
 
 

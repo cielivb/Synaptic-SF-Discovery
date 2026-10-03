@@ -4,6 +4,7 @@ outdir <- "results/02_extract_shape_features"
 log_file <- "logs/02_extract_shape_data.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+log_info("Running 02_extract_shape_features.R ...")
 
 library(R.utils) # unzip gzipped files
 library(ggplot2)
@@ -346,4 +347,5 @@ write_csv(shape_df, glue("{outdir}/shape_features.csv"), col_names = TRUE)
 
 
 log_info("Done!")
+log_info("Ended 02_extract_shape_features.R")
 

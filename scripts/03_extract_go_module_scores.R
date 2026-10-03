@@ -9,6 +9,8 @@ outdir <- "results/03_extract_go_module_scores"
 log_file <- "logs/03_extract_go_module_scores.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+log_info("Running 03_extract_go_module_scores.R ...")
+
 
 library(cluster)
 suppressPackageStartupMessages(library(dendextend))
@@ -365,6 +367,8 @@ log_info(
 
 
 log_info("Done!")
+log_info("Ended 03_extract_go_module_scores.R")
+
 
 
 

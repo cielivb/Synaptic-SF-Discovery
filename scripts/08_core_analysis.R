@@ -22,6 +22,8 @@ outdir <- "results/08_core_analysis"
 log_file <- "logs/08_core_analysis.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+log_info("Running 08_core_analysis.R ...")
+
 plan(multisession, workers = parallel::detectCores(logical = FALSE))
 
 library(png)
@@ -78,7 +80,7 @@ pairwise_energy <- function(clust1, clust2, df1, df2, feature_cols) {
   set.seed(254)
   X <- as.matrix(df1[, feature_cols])
   Y <- as.matrix(df2[, feature_cols])
-  result <- eqdist.etest(rbind(X, Y), sizes = c(nrow(X), nrow(Y)), R = 199)
+  result <- eqdist.etest(rbind(X, Y), sizes = c(nrow(X), nrow(Y)), R = 999)
   return(tibble(
     clust1 = clust1,
     clust2 = clust2,
@@ -378,5 +380,6 @@ invisible(dev.off())
 
 
 log_info("Done!")
+log_info("Ended 08_core_analysis.R")
 
 

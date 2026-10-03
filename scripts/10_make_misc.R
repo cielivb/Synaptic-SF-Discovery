@@ -5,6 +5,7 @@ outdir <- "results/10_make_misc"
 log_file <- "logs/10_make_misc.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+log_info("Running 10_make_misc.R ...")
 
 library(png)
 library(tidyr)
@@ -24,3 +25,7 @@ hist(
   main = "Distribution of Protein Counts Per GMS Cluster",
 )
 invisible(dev.off())
+
+
+
+log_info("Ended 10_make_misc.R ...")

@@ -4,6 +4,7 @@ import argparse
 import json
 import networkx as nx
 from networkx.drawing.nx_agraph import to_agraph
+import math
 import pandas as pd
 from pathlib import Path
 import textwrap
@@ -164,7 +165,11 @@ for meta_node in G.nodes:
 
     # Node box outline properties
     node.attr["shape"] = "box"
-    node.attr["color"] = module_to_colour[data["module"]]  # outline colour
+    module = data["module"]
+    if module is None or (isinstance(module, float) and math.isnan(module)):
+        node.attr["color"] = "#808080"  # grey
+    else:
+        node.attr["color"] = module_to_colour[module]
     node.attr["style"] = namespace_to_linestyle[data["namespace"]]
     node.attr["style"] += ",rounded"
     node.attr["penwidth"] = "3"  # box outline width

@@ -11,6 +11,7 @@ outdir <- "results/01_filter_proteins"
 log_file <- "logs/01_filter_proteins.log"
 source("scripts/setup.R")
 configure_logger(log_file)
+log_info("Running 01_filter_proteins.R ...")
 
 library(jsonlite)
 library(tidyr)
@@ -113,3 +114,4 @@ done <- future_lapply(go_taxon_meta$destination, function (go_taxon_file, outdir
 }, outdir = outdir)
 
 log_info("Protein filtration script done")
+log_info("End 01_filter_proteins.R")
