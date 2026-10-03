@@ -186,7 +186,9 @@ do_umap <- function (df, taxon, feature_space, colour_by=NULL, colour_map=NULL) 
     !names(subset) %in% c(
       "uniprot", "taxon", "gms_cluster", "gms_cluster_prob",
       "fine_ct_sf_cluster", "fine_ct_sf_cluster_prob", "coarse_ct_sf_cluster",
-      "coarse_ct_sf_cluster_prob")])
+      "coarse_ct_sf_cluster_prob", 
+      "mean_pLDDT", "length_u", "length_w", "rg_u", "rg_w", "eccentricity_u",
+      "eccentricity_w", "coeff_var_u", "coeff_var_w", "kurtosis_u", "kurtosis_w")])
   features <- subset |> arrange(uniprot) |> select(all_of(feature_cols))
 
   if (feature_space == "Shape") {
