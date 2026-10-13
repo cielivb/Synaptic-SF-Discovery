@@ -62,15 +62,25 @@ lapply(features, function (feature) {
     # Create 3D plot and save
     png(filename=glue("{outdir}/{direction}_{feature}_{uniprot}.png"), 
         height = 8, width = 8, res = 300, units = "in")
-    scatterplot3d(
+    plt <- scatterplot3d(
       residue_site_df$x,
       residue_site_df$y,
       residue_site_df$z,
       color = residue_site_df$pLDDT,
-      pch = 16
+      pch = 16,
+      xlab = "X coordinate (Å)",
+      ylab = "Y coordinate (Å)",
+      zlab = "Z coordinate (Å)"
     )
+    coords <- plt$xyz.convert(
+      median(residue_site_df$x),
+      max(residue_site_df$y),
+      max(residue_site_df$z)
+    )
+    text(coords$x, coords$y, labels = uniprot, cex = 0.7)
     invisible(dev.off())
   }
+  
   lapply(seq_len(nrow(low_feature)), function(i) { # low feature value proteins
     make_plot(
       uniprot = low_feature$uniprot[i],
