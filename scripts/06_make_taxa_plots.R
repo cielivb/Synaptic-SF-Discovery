@@ -29,17 +29,26 @@ df <- read_csv(
 
 log_info("Creating GMS Cluster P/A by Taxon Tile Plot ...")
 
-# taxon | cluster | present (0/1)
-pa_df <- df |>
-  select(taxon, gms_cluster) |>
-  mutate(present = 1) |>
-  distinct() |>
+# Get proportions of proteins assigned to each GMS cluster per taxa
+taxon_totals <- df |>
+  count(taxon, name = "n_taxon")
+cluster_counts <- df |>
+  count(taxon, gms_cluster, name = "n_cluster")
+prop_df <- cluster_counts |>
+  left_join(taxon_totals, by = "taxon") |>
   mutate(
+    prop = n_cluster / n_taxon,
+    label = sprintf("%.1f%%", 100 * prop)
+  )
+
+# taxon | cluster | present (0/1)
+pa_df <- prop_df |>
+  mutate(
+    present = factor(1),
     cluster = paste0("Cluster ", gms_cluster),
-    present = factor(present),
     taxon = stringr::str_to_title(taxon)
   ) |>
-  select(taxon, cluster, present)
+  select(taxon, cluster, present, prop, label)
 
 # Sort clusters by cluster ID
 pa_df$cluster <- factor(
@@ -53,19 +62,24 @@ pa_df$taxon <- factor(pa_df$taxon, levels = taxa_order)
 
 # Create tile plot
 svg(glue("{outdir}/cluster_pa_by_taxa_tile_plot.svg"), height = 6, width = 20)
-plt <- ggplot(pa_df, aes(x = cluster, y = taxon, fill = present)) +
-  geom_tile(color = "grey80") +
-  scale_fill_manual(values = c("0" = "white", "1" = "#2ECC71")) +
+plt <- ggplot(pa_df, aes(x = cluster, y = taxon, fill = prop)) +
+  geom_tile(aes(fill=prop)) +
+  geom_text(aes(label = label), size = 3) +
+  scale_fill_gradient(
+    low = "white", high = "#2ECC71", labels = scales::percent
+  ) +
   labs(
-    title = "GMS Cluster Presence By Taxa", x = "", y = ""
+    title = "Percentage of Proteins Assigned to Each GMS Cluster by Species",
+    x = "",
+    y = ""
   ) +
   theme_minimal(base_size = 14) +
   theme(
-    plot.title = element_text(size = 16, hjust = 0.5, margin = margin(b=12)),
+    plot.title = element_text(size = 16, hjust = 0.5, margin = margin(b = 12)),
     legend.position = "none",
     axis.text.x = element_text(size = 10, angle = 55, hjust = 1),
     axis.text.y = element_text(size = 12),
-    panel.grid = element_blank(),
+    panel.grid = element_blank()
   )
 print(plt)
 invisible(dev.off())

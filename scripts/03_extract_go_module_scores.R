@@ -13,7 +13,6 @@ log_info("Running 03_extract_go_module_scores.R ...")
 
 
 library(cluster)
-suppressPackageStartupMessages(library(dendextend))
 library(dynamicTreeCut)
 library(ggplot2)
 library(tidyr)
